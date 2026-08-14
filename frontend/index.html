@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Werft</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css?v=13" />
+  </head>
+  <body>
+    <div id="gate" class="gate">
+      <form id="login-form" class="gate-card">
+        <h1>Werft</h1>
+        <p class="muted">Anmelden. Erstes Passwort: <code>changeme</code> — danach sofort ändern.</p>
+        <label>
+          Benutzer
+          <input id="login-user" name="username" type="text" autocomplete="username" required />
+        </label>
+        <label>
+          Passwort
+          <input id="login-pass" name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="login-error" class="form-error" hidden></p>
+        <button type="submit" id="login-submit">Anmelden</button>
+      </form>
+    </div>
+
+    <div id="pw-gate" class="gate is-hidden">
+      <form id="pw-form" class="gate-card">
+        <h1>Passwort ändern</h1>
+        <p class="muted">Das Startpasswort muss ersetzt werden (mindestens 10 Zeichen).</p>
+        <label>
+          Aktuelles Passwort
+          <input id="pw-current" type="password" autocomplete="current-password" required />
+        </label>
+        <label>
+          Neues Passwort
+          <input id="pw-new" type="password" autocomplete="new-password" required minlength="10" />
+        </label>
+        <p id="pw-error" class="form-error" hidden></p>
+        <button type="submit">Speichern</button>
+      </form>
+    </div>
+
+    <div id="app" class="is-hidden">
+      <header class="top">
+        <div class="brand">
+          <h1 class="wordmark" aria-label="Werft">
+            <img src="/logo.svg" alt="" class="logo" width="52" height="56" />
+            <span class="wordmark-rest">erft</span>
+          </h1>
+          <p class="muted">Ops-Konsole · Status, Jobs, Einstellungen, OTOBO-Setup</p>
+        </div>
+        <div class="top-right">
+          <nav class="tabs" role="tablist">
+            <button type="button" class="tab is-active" data-tab="status">Status</button>
+            <button type="button" class="tab" data-tab="settings">Einstellungen</button>
+            <button type="button" class="tab" data-tab="setup">OTOBO-Setup</button>
+          </nav>
+          <button type="button" id="logout" class="text-btn">Abmelden</button>
+        </div>
+      </header>
+
+      <main>
+        <section id="panel-status" class="panel">
+          <div id="health" class="cards"></div>
+          <h2>Jobs</h2>
+          <div id="job-counts" class="counts"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Aktualisiert</th>
+                  <th>Dauer</th>
+                  <th>Hostname</th>
+                  <th>Ticket</th>
+                  <th>Hypervisor</th>
+                  <th>Status</th>
+                  <th>IP</th>
+                  <th>Fehler</th>
+                </tr>
+              </thead>
+              <tbody id="jobs-body"></tbody>
+            </table>
+          </div>
+          <div class="meta">
+            <div>
+              <h2>Hosts</h2>
+              <div id="hosts" class="host-list"></div>
+            </div>
+            <div>
+              <h2>Anbindung</h2>
+              <dl id="config" class="kv"></dl>
+            </div>
+          </div>
+        </section>
+
+        <section id="panel-settings" class="panel is-hidden">
+          <div class="panel-head">
+            <p class="hint">
+              Leeres Secret-Feld bleibt unverändert.
+            </p>
+            <button type="button" id="start-guide" class="secondary">Einrichtung starten</button>
+          </div>
+          <p id="setup-banner" class="guide-banner is-hidden">
+            Noch nicht eingerichtet — OTOBO-URL fehlt.
+            <button type="button" id="banner-guide" class="text-btn">Einrichtung starten</button>
+          </p>
+          <aside id="guide-dock" class="guide-dock is-hidden" role="dialog" aria-labelledby="guide-title">
+            <p class="guide-step" id="guide-progress"></p>
+            <h2 id="guide-title"></h2>
+            <p id="guide-body" class="hint"></p>
+            <p id="guide-warn" class="form-error" hidden></p>
+            <div class="guide-actions">
+              <button type="button" id="guide-back" class="secondary">Zurück</button>
+              <button type="button" id="guide-skip" class="secondary">Überspringen</button>
+              <button type="button" id="guide-next">Weiter</button>
+              <button type="button" id="guide-close" class="text-btn">Abbrechen</button>
+            </div>
+          </aside>
+          <form id="settings-form" class="form form-wide">
+            <fieldset id="fs-webhook">
+              <legend>Webhook</legend>
+              <p class="hint">
+                Fehlt der Key, legt ihn das OTOBO-Setup an. Schon da: Feld leer lassen.
+                Nach <em>Genehmigen</em> ruft OTOBO Werft damit auf — nicht das OTOBO-Passwort.
+              </p>
+              <label>
+                API-Key
+                <input id="s-webhook_api_key" type="password" autocomplete="off" />
+                <span class="field-help" id="webhook-key-state"></span>
+              </label>
+              <button type="button" id="rotate-webhook" class="secondary">Neuen Key erzeugen</button>
+              <p id="webhook-once" class="muted" hidden></p>
+              <label>
+                Erlaubte Quell-IPs
+                <input id="s-webhook_allow_from" type="text" placeholder="z. B. 192.0.2.20" />
+                <span class="field-help">Kommagetrennt. Leer = jede Quelle.</span>
+              </label>
+            </fieldset>
+            <fieldset id="fs-otobo">
+              <legend>OTOBO</legend>
+              <p class="hint">Damit schreibt Werft ins Ticket.</p>
+              <label><span class="lbl">URL</span> <input id="s-otobo_url" type="url" /></label>
+              <label><span class="lbl">Login</span> <input id="s-otobo_user_login" type="text" /></label>
+              <label><span class="lbl">Passwort</span> <input id="s-otobo_password" type="password" autocomplete="off" /></label>
+              <label>
+                Webservice
+                <input id="s-otobo_webservice_name" type="text" placeholder="legt OTOBO-Setup an" />
+                <span class="field-help">Optional. Setup erstellt den Webservice und trägt den Namen ein.</span>
+              </label>
+              <label class="check"><input id="s-otobo_verify_ssl" type="checkbox" /> TLS prüfen</label>
+              <details class="advanced">
+                <summary>Ticket-Status (legt das OTOBO-Setup an)</summary>
+                <p class="hint">
+                  Nur ändern, wenn die Namen in OTOBO anders heißen.
+                </p>
+                <label>Status Provisioning <input id="s-otobo_status_provisioning" type="text" /></label>
+                <label>Status Done <input id="s-otobo_status_done" type="text" /></label>
+                <label>Status Failed <input id="s-otobo_status_failed" type="text" /></label>
+              </details>
+              <details class="advanced" id="fs-ssh">
+                <summary>SSH von Werft zur OTOBO-Box</summary>
+                <p class="hint">
+                  Werft loggt sich per SSH auf der OTOBO-VM ein und legt dort Webservice und den Prozess „VM Provisioning“ an. User, Home und OS-User gelten auf der OTOBO-VM. SSH-Key-Pfad: privater Key auf der Werft-Maschine (ohne .pub).
+                </p>
+                <label>
+                  SSH-Host
+                  <input id="s-otobo_ssh_host" type="text" placeholder="leer = Host aus OTOBO-URL" />
+                  <span class="field-help" id="ssh-host-hint"></span>
+                </label>
+                <label><span class="lbl">SSH-User</span> <input id="s-otobo_ssh_user" type="text" placeholder="root" /></label>
+                <label>SSH-Port <input id="s-otobo_ssh_port" type="number" /></label>
+                <label>
+                  <span class="lbl">SSH-Key-Pfad</span>
+                  <input id="s-otobo_ssh_key" type="text" placeholder="/root/.ssh/id_ed25519" />
+                  <span class="field-help">Privater Key auf der Werft-Maschine, z. B. /root/.ssh/id_ed25519 — nicht id_ed25519.pub. Der öffentliche Key muss auf der OTOBO-VM in authorized_keys stehen.</span>
+                </label>
+                <label>
+                  <span class="lbl">OTOBO Home</span>
+                  <input id="s-otobo_home" type="text" placeholder="/opt/otobo" />
+                  <span class="field-help">Installationsverzeichnis auf der OTOBO-VM, meist /opt/otobo — dort liegt bin/otobo.Console.pl.</span>
+                </label>
+                <label><span class="lbl">OTOBO OS-User</span> <input id="s-otobo_os_user" type="text" placeholder="otobo" /></label>
+              </details>
+            </fieldset>
+            <fieldset id="fs-netbox">
+              <legend>NetBox</legend>
+              <p class="hint">Reserviert die IP zum Subnetz aus dem Ticket.</p>
+              <label><span class="lbl">URL</span> <input id="s-netbox_url" type="url" /></label>
+              <label><span class="lbl">Token</span> <input id="s-netbox_token" type="password" autocomplete="off" /></label>
+              <label class="check"><input id="s-netbox_verify_ssl" type="checkbox" /> TLS prüfen</label>
+            </fieldset>
+            <fieldset id="fs-proxmox">
+              <legend>Proxmox</legend>
+              <p class="hint">
+                Cluster: eine API-Adresse, nicht jeden Node. Standalone: je Host eine Verbindung.
+              </p>
+              <div id="proxmox-endpoints" class="conn-table"></div>
+              <button type="button" id="add-proxmox" class="secondary">Hinzufügen</button>
+            </fieldset>
+            <fieldset id="fs-vmware">
+              <legend>VMware</legend>
+              <p class="hint">vCenter: eine Verbindung. Standalone-ESXi: je Host eine.</p>
+              <div id="vmware-endpoints" class="conn-table"></div>
+              <button type="button" id="add-vmware" class="secondary">Hinzufügen</button>
+            </fieldset>
+            <p id="settings-msg" class="muted" hidden></p>
+            <button type="submit" id="settings-save">Speichern</button>
+          </form>
+        </section>
+
+        <section id="panel-setup" class="panel is-hidden">
+          <div class="panel-head">
+            <p class="muted">
+              Zuerst Dry-Run. Werft-URL so, wie OTOBO sie erreicht
+              (Lab: <code>http://&lt;werft-ip&gt;:8000</code>).
+              Auf OTOBO: SSH mit <code>sudo -u otobo</code>, Paket
+              DynamicFieldScreen, Daemon muss laufen.
+            </p>
+            <button type="button" id="setup-to-guide" class="secondary">Zuerst einrichten</button>
+          </div>
+          <form id="setup-form" class="form">
+            <label>
+              Werft-URL
+              <input id="middleware-url" name="middleware_url" type="url" required />
+            </label>
+            <label>
+              Webservice-Name
+              <input id="webservice-name" name="webservice_name" type="text" value="REST-API" required />
+            </label>
+            <label class="check">
+              <input id="dry-run" type="checkbox" checked />
+              Dry-Run (nichts schreiben)
+            </label>
+            <label class="check">
+              <input id="skip-catalog" type="checkbox" />
+              Katalog-Sync überspringen
+            </label>
+            <button type="submit" id="setup-run">Ausführen</button>
+          </form>
+          <pre id="setup-log" class="log" aria-live="polite"></pre>
+        </section>
+      </main>
+    </div>
+    <div id="conn-modal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="conn-title">
+      <div class="modal-card">
+        <h2 id="conn-title">Verbindung</h2>
+        <p id="conn-lead" class="hint"></p>
+        <form id="conn-form" class="form">
+          <fieldset class="kind-picks" id="conn-kind-box">
+            <legend>Typ</legend>
+            <label class="check"><input type="radio" name="conn-kind" value="cluster" /> Cluster</label>
+            <label class="check"><input type="radio" name="conn-kind" value="host" /> Einzelner Node</label>
+            <label class="check"><input type="radio" name="conn-kind" value="vcenter" /> vCenter</label>
+            <label class="check"><input type="radio" name="conn-kind" value="esxi" /> ESXi (standalone)</label>
+          </fieldset>
+          <label>Name <input id="conn-name" type="text" placeholder="z. B. Prod" /></label>
+          <label>
+            API-IP / Hostname
+            <input id="conn-host" type="text" required placeholder="192.0.2.10" />
+            <span id="conn-host-help" class="field-help"></span>
+          </label>
+          <label id="conn-user-wrap">User <input id="conn-user" type="text" /></label>
+          <div id="conn-proxmox-auth">
+            <label>Token-ID <input id="conn-token-name" type="text" placeholder="user@pve!tokenname" /></label>
+            <label>
+              Token-Secret
+              <input id="conn-token-value" type="password" autocomplete="off" />
+              <span id="conn-token-help" class="field-help">Beim Bearbeiten leer lassen — das Secret bleibt gespeichert.</span>
+            </label>
+          </div>
+          <div id="conn-vmware-auth" class="is-hidden">
+            <label>
+              Passwort
+              <input id="conn-password" type="password" autocomplete="off" />
+              <span class="field-help">Leer lassen, wenn das Passwort schon hinterlegt ist.</span>
+            </label>
+          </div>
+          <label class="check"><input id="conn-tls" type="checkbox" /> TLS-Zertifikat prüfen</label>
+          <p id="conn-error" class="form-error" hidden></p>
+          <div class="modal-actions">
+            <button type="submit">Übernehmen</button>
+            <button type="button" id="conn-cancel" class="secondary">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="/app.js?v=15"></script>
+  </body>
+</html>

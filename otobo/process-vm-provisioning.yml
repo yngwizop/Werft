@@ -1,0 +1,239 @@
+---
+# OTOBO process: VM form only via "New process ticket".
+# EntityIDs use Process-/Activity-/… + 32 hex so re-import can overwrite.
+Activities:
+  Activity-aa000000000000000000000000000001:
+    ActivityDialogs:
+      - ActivityDialog-aa000000000000000000000000000002
+    ChangeTime: 2026-08-13 12:00:00
+    Config:
+      ActivityDialog:
+        '1': ActivityDialog-aa000000000000000000000000000002
+    CreateTime: 2026-08-13 12:00:00
+    EntityID: Activity-aa000000000000000000000000000001
+    ID: '1'
+    Name: VM-Antrag
+  Activity-aa000000000000000000000000000002:
+    ActivityDialogs: []
+    ChangeTime: 2026-08-13 12:00:00
+    Config: {}
+    CreateTime: 2026-08-13 12:00:00
+    EntityID: Activity-aa000000000000000000000000000002
+    ID: '2'
+    Name: In Bereitstellung
+ActivityDialogs:
+  ActivityDialog-aa000000000000000000000000000001:
+    ChangeTime: 2026-08-13 12:00:00
+    Config:
+      DescriptionLong: VM-Anfrage anlegen. Felder kommen aus Proxmox/VMware (Katalog-Sync).
+      DescriptionShort: VM beantragen
+      FieldOrder:
+        - CustomerID
+        - Title
+        - Queue
+        - Article
+        - DynamicField_VMHostname
+        - DynamicField_VMHypervisor
+        - DynamicField_VMOS
+        - DynamicField_VMTemplate
+        - DynamicField_VMNode
+        - DynamicField_VMDatastore
+        - DynamicField_VMCpu
+        - DynamicField_VMRamMB
+        - DynamicField_VMDiskGB
+        - DynamicField_VMSubnet
+        - DynamicField_VMGateway
+        - DynamicField_VMVlanID
+      Fields:
+        CustomerID:
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        Title:
+          DefaultValue: VM Anfrage
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        Queue:
+          DefaultValue: VM Provisioning
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        Article:
+          Config:
+            CommunicationChannel: Internal
+            IsVisibleForCustomer: '0'
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMHostname:
+          DefaultValue: ''
+          DescriptionLong: 'Nur Kleinbuchstaben, Zahlen und Bindestrich (a-z0-9-).'
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMHypervisor:
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMOS:
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMTemplate:
+          DefaultValue: ''
+          DescriptionLong: 'Nach Hypervisor-Wechsel Formular ggf. neu laden, damit ACL Node/ISO filtert.'
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMNode:
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMDatastore:
+          DefaultValue: ''
+          DescriptionLong: 'Proxmox-Storage oder VMware-Datastore. Nach Hypervisor-Wechsel Formular ggf. neu laden.'
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMCpu:
+          DefaultValue: '2'
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMRamMB:
+          DefaultValue: '2048'
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMDiskGB:
+          DefaultValue: '20'
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMSubnet:
+          DefaultValue: ''
+          DescriptionLong: 'NetBox-Prefix als CIDR, z. B. 10.10.10.0/24'
+          DescriptionShort: ''
+          Display: '2'
+        DynamicField_VMGateway:
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '1'
+        DynamicField_VMVlanID:
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '1'
+      Interface:
+        - AgentInterface
+      Permission: ''
+      RequiredLock: '0'
+      SubmitAdviceText: ''
+      SubmitButtonText: VM-Ticket erstellen
+    CreateTime: 2026-08-13 12:00:00
+    EntityID: ActivityDialog-aa000000000000000000000000000001
+    ID: '1'
+    Name: VM beantragen
+  ActivityDialog-aa000000000000000000000000000002:
+    ChangeTime: 2026-08-13 12:00:00
+    Config:
+      DescriptionLong: Setzt den Ticket-Status auf Genehmigt und löst Werft aus.
+      DescriptionShort: VM genehmigen
+      FieldOrder:
+        - Article
+        - State
+        - PendingTime
+      Fields:
+        Article:
+          Config:
+            CommunicationChannel: Internal
+            IsVisibleForCustomer: '0'
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '1'
+        State:
+          DefaultValue: Genehmigt
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '2'
+        PendingTime:
+          DefaultValue: ''
+          DescriptionLong: ''
+          DescriptionShort: ''
+          Display: '1'
+      Interface:
+        - AgentInterface
+      Permission: ''
+      RequiredLock: '0'
+      SubmitAdviceText: ''
+      SubmitButtonText: Genehmigen
+    CreateTime: 2026-08-13 12:00:00
+    EntityID: ActivityDialog-aa000000000000000000000000000002
+    ID: '2'
+    Name: Genehmigen
+Process:
+  Activities:
+    - Activity-aa000000000000000000000000000001
+    - Activity-aa000000000000000000000000000002
+  ChangeTime: 2026-08-13 12:00:00
+  Config:
+    Description: VM-Provisioning über Proxmox/VMware nach Freigabe (Werft-Webhook).
+    Path:
+      Activity-aa000000000000000000000000000001:
+        Transition-aa000000000000000000000000000001:
+          ActivityEntityID: Activity-aa000000000000000000000000000002
+          TransitionAction:
+            - TransitionAction-aa000000000000000000000000000001
+      Activity-aa000000000000000000000000000002: {}
+    StartActivity: Activity-aa000000000000000000000000000001
+    StartActivityDialog: ActivityDialog-aa000000000000000000000000000001
+  CreateTime: 2026-08-13 12:00:00
+  EntityID: Process-aa000000000000000000000000000001
+  ID: '1'
+  Layout:
+    Activity-aa000000000000000000000000000001:
+      left: '180'
+      top: '120'
+    Activity-aa000000000000000000000000000002:
+      left: '520'
+      top: '120'
+  Name: VM Provisioning
+  State: Active
+  StateEntityID: S1
+  TransitionActions:
+    - TransitionAction-aa000000000000000000000000000001
+  Transitions:
+    - Transition-aa000000000000000000000000000001
+TransitionActions:
+  TransitionAction-aa000000000000000000000000000001:
+    ChangeTime: 2026-08-13 12:00:00
+    Config:
+      Config:
+        State: Genehmigt
+        PendingTimeDiff: '86400'
+      Module: Kernel::System::ProcessManagement::TransitionAction::TicketStateSet
+    CreateTime: 2026-08-13 12:00:00
+    EntityID: TransitionAction-aa000000000000000000000000000001
+    ID: '1'
+    Name: Status Genehmigt setzen
+Transitions:
+  Transition-aa000000000000000000000000000001:
+    ChangeTime: 2026-08-13 12:00:00
+    Config:
+      Condition:
+        '1':
+          Fields:
+            State:
+              Match: Genehmigt
+              Type: String
+          Type: and
+      ConditionLinking: and
+    CreateTime: 2026-08-13 12:00:00
+    EntityID: Transition-aa000000000000000000000000000001
+    ID: '1'
+    Name: Genehmigt

@@ -1,0 +1,68 @@
+---
+# Template for Admin::WebService::Add / merge.
+# Placeholders __MIDDLEWARE_URL__ and __WEBHOOK_API_KEY__ are substituted at install time.
+Debugger:
+  DebugThreshold: error
+  TestMode: '0'
+Description: Werft (OTOBO provider + requester webhook)
+Provider:
+  Operation:
+    SessionCreate:
+      Description: Session for Werft callbacks
+      IncludeTicketData: '0'
+      Type: Session::SessionCreate
+    TicketGet:
+      Description: Ticket plus dynamic fields for Werft
+      Type: Ticket::TicketGet
+    TicketUpdate:
+      Description: Comment and state updates from Werft
+      IncludeTicketData: '0'
+      Type: Ticket::TicketUpdate
+  Transport:
+    Config:
+      KeepAlive: ''
+      MaxLength: '10000000'
+      RouteOperationMapping:
+        SessionCreate:
+          RequestMethod:
+            - POST
+          Route: /SessionCreate
+        TicketGet:
+          RequestMethod:
+            - POST
+          Route: /TicketGet
+        TicketUpdate:
+          RequestMethod:
+            - POST
+          Route: /TicketUpdate
+    Type: HTTP::REST
+RemoteSystem: ''
+Requester:
+  Invoker:
+    ProvisionVM:
+      Description: Webhook to Werft when ticket state becomes Genehmigt
+      Events:
+        - Asynchronous: '1'
+          Condition:
+            Condition:
+              '1':
+                Fields:
+                  State:
+                    Match: Genehmigt
+                    Type: String
+                Type: and
+            ConditionLinking: and
+          Event: TicketStateUpdate
+      Type: Generic::PassThrough
+  Transport:
+    Config:
+      AdditionalHeaders:
+        X-Api-Key: __WEBHOOK_API_KEY__
+      DefaultCommand: POST
+      Host: __MIDDLEWARE_URL__
+      InvokerControllerMapping:
+        ProvisionVM:
+          Command: POST
+          Controller: /api/v1/provision-vm
+      Timeout: '120'
+    Type: HTTP::REST

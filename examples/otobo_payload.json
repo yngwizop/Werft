@@ -1,0 +1,22 @@
+{
+  "ticket_id": "20260813-0042",
+  "hostname": "app-web-01",
+  "hypervisor": "proxmox",
+  "cpu": 4,
+  "ram_mb": 8192,
+  "disks": [
+    {
+      "size_gb": 80,
+      "datastore": "local-lvm"
+    }
+  ],
+  "subnet": "10.20.30.0/24",
+  "vlan_id": 30,
+  "gateway": "10.20.30.1",
+  "dns_servers": ["10.20.30.10", "10.20.30.11"],
+  "template": "ubuntu-24.04-cloud",
+  "node": "pve1",
+  "tags": ["otobo", "web"],
+  "requester": "j.doe",
+  "os": "Ubuntu 24.04"
+}

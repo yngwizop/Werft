@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 12 92 88" role="img" aria-label="W">
+  <path
+    fill="#ffffff"
+    stroke="#000000"
+    stroke-width="5"
+    stroke-linejoin="miter"
+    stroke-miterlimit="12"
+    stroke-linecap="butt"
+    d="M8 16
+       L26 16
+       L38 68
+       L50 30
+       L62 68
+       L74 16
+       L92 16
+       L72 96
+       L56 96
+       L50 76
+       L44 96
+       L28 96
+       Z"
+  />
+</svg>
