@@ -13,7 +13,7 @@ from app.core.auth import (
 from app.core.config import get_infra
 from app.core.crypto import decrypt_blob, encrypt_blob, reset_master_key_cache
 from app.core.runtime_settings import mask_settings, merge_overlay
-from app.core.security import compute_signature, ip_allowed
+from app.core.security import compute_signature, hmac_secret_usable, ip_allowed
 
 
 def test_password_hash_and_policy() -> None:
@@ -77,3 +77,9 @@ def test_ip_allowlist() -> None:
 
 def test_hmac_stable() -> None:
     assert compute_signature("secret", b"abc") == compute_signature("secret", b"abc")
+
+
+def test_hmac_secret_policy() -> None:
+    assert not hmac_secret_usable("change-me")
+    assert not hmac_secret_usable("short")
+    assert hmac_secret_usable("a-long-enough-hmac-secret")

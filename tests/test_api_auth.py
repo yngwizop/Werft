@@ -42,7 +42,7 @@ def test_provision_endpoint_accepts_signed_payload(monkeypatch) -> None:
     }
     body = json.dumps(payload).encode()
     resp = client.post("/api/v1/provision-vm", content=body, headers={"Content-Type": "application/json"})
-    assert resp.status_code in {401, 403}
+    assert resp.status_code in {401, 403, 503}
 
     assert client.get("/healthz").status_code == 200
     assert client.get("/api/v1/ops/status").status_code == 401

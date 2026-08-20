@@ -16,3 +16,9 @@ class PasswordChangeRequest(BaseModel):
 class AuthUserResponse(BaseModel):
     username: str
     must_change_password: bool
+
+
+class AuthBootstrapResponse(BaseModel):
+    """Public login hint: whether the initial password is still in force."""
+
+    default_credentials: bool

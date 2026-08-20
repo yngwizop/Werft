@@ -21,7 +21,15 @@ from app.core.config import Settings, get_settings
 from app.core.endpoints import list_proxmox_endpoints, list_vmware_endpoints
 from app.db import get_db
 from app.models.job import ProvisioningJob
-from app.schemas.ops import OpsComponent, OpsHostRow, OpsJobRow, OpsSetupRequest, OpsStatusResponse
+from app.schemas.ops import (
+    OpsComponent,
+    OpsDaemonRequest,
+    OpsHostRow,
+    OpsJobRow,
+    OpsSetupRequest,
+    OpsStatusResponse,
+)
+from app.services.otobo_daemon import daemon_control, daemon_status
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +97,17 @@ def _safe_config(settings: Settings) -> dict[str, str]:
         "vmware": vmware,
         "katalog-sync": f"{settings.catalog_sync_interval_seconds}s",
     }
+
+
+def _otobo_daemon() -> OpsComponent:
+    result = daemon_status()
+    if "nicht konfiguriert" in result.detail:
+        return _skip(result.detail)
+    if not result.ok:
+        return _error(result.detail)
+    if result.running:
+        return _ok("running")
+    return _error("not running")
 
 
 def _postgres(db: Session) -> OpsComponent:
@@ -308,14 +327,16 @@ def ops_status(db: Session = Depends(get_db)) -> OpsStatusResponse:
         .limit(5)
         .all()
     )
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    with ThreadPoolExecutor(max_workers=7) as pool:
         fut_otobo = pool.submit(_otobo)
+        fut_daemon = pool.submit(_otobo_daemon)
         fut_netbox = pool.submit(_netbox)
         fut_proxmox = pool.submit(_proxmox)
         fut_vmware = pool.submit(_vmware)
         fut_redis = pool.submit(_redis)
         fut_worker = pool.submit(_worker)
         otobo = _await(fut_otobo, _error("timeout"))
+        otobo_daemon = _await(fut_daemon, _error("timeout"))
         netbox = _await(fut_netbox, _error("timeout"))
         proxmox, px_hosts = _await_hosts(fut_proxmox)
         vmware, vw_hosts = _await_hosts(fut_vmware)
@@ -329,6 +350,7 @@ def ops_status(db: Session = Depends(get_db)) -> OpsStatusResponse:
         redis=redis,
         worker=worker,
         otobo=otobo,
+        otobo_daemon=otobo_daemon,
         netbox=netbox,
         proxmox=proxmox,
         vmware=vmware,
@@ -372,6 +394,21 @@ def ops_jobs(db: Session = Depends(get_db), limit: int = 50) -> list[OpsJobRow]:
         .all()
     )
     return [_job_row(job, settings.otobo_url) for job in rows]
+
+
+@router.post("/otobo-daemon")
+def ops_otobo_daemon(body: OpsDaemonRequest) -> dict:
+    result = daemon_control(body.action)
+    if not result.ok and "nicht konfiguriert" in result.detail:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result.detail)
+    if not result.ok:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=result.detail)
+    return {
+        "action": body.action,
+        "running": result.running,
+        "detail": result.detail,
+        "status": "ok" if result.running or body.action == "stop" else "error",
+    }
 
 
 @router.post("/setup")

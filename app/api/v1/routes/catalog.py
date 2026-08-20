@@ -2,7 +2,9 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 
+from app.core.auth import require_ready_user
 from app.core.security import verify_webhook_signature
+from app.models.auth import OpsUser
 from app.services.catalog import list_datastores, list_hosts, list_images
 
 router = APIRouter(prefix="/api/v1/catalog", tags=["catalog"])
@@ -40,8 +42,9 @@ def catalog_images_public(
     hypervisor: Literal["proxmox", "vmware"] | None = Query(default=None),
     os_family: Literal["linux", "windows", "other"] | None = Query(default=None),
     kind: Literal["template", "iso"] | None = Query(default=None),
+    _: OpsUser = Depends(require_ready_user),
 ) -> dict:
-    """Unauthenticated read for lab/demo — lock down in production."""
+    """Ops-UI / operator read — requires logged-in session."""
     images = list_images(hypervisor=hypervisor, os_family=os_family, kind=kind)
     return {
         "count": len(images),
@@ -81,6 +84,7 @@ def catalog_hosts(
 @router.get("/hosts/public")
 def catalog_hosts_public(
     hypervisor: Literal["proxmox", "vmware"] | None = Query(default=None),
+    _: OpsUser = Depends(require_ready_user),
 ) -> dict:
     return _hosts_payload(hypervisor)
 
@@ -107,5 +111,6 @@ def catalog_datastores(
 @router.get("/datastores/public")
 def catalog_datastores_public(
     hypervisor: Literal["proxmox", "vmware"] | None = Query(default=None),
+    _: OpsUser = Depends(require_ready_user),
 ) -> dict:
     return _datastores_payload(hypervisor)

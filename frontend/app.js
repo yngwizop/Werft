@@ -87,6 +87,26 @@ function showPhase(phase) {
   show("gate", phase === "login");
   show("pw-gate", phase === "pw");
   show("app", phase === "app");
+  if (phase === "login") refreshLoginHint();
+}
+
+async function refreshLoginHint() {
+  const hint = $("login-hint");
+  if (!hint) return;
+  hint.textContent = "Anmelden.";
+  try {
+    const res = await fetch("/api/v1/auth/bootstrap", { credentials: "include" });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.default_credentials) {
+      hint.innerHTML =
+        "Erstes Login: Benutzer <code>admin</code>, Passwort <code>changeme</code> — danach sofort ändern.";
+      const user = $("login-user");
+      if (user && !user.value.trim()) user.value = "admin";
+    }
+  } catch {
+    /* keep generic hint */
+  }
 }
 
 async function api(path, options = {}) {
@@ -136,6 +156,52 @@ function hostnameCell(job) {
   return `${esc(job.hostname || "")}${ref}`;
 }
 
+function renderDaemon(component) {
+  const state = $("daemon-state");
+  const startBtn = $("daemon-start");
+  const restartBtn = $("daemon-restart");
+  if (!state) return;
+  const status = component?.status || (component?.ok ? "ok" : "error");
+  const detail = component?.detail || "—";
+  const running = status === "ok" && /running/i.test(detail);
+  state.textContent = detail;
+  state.classList.toggle("is-ok", status === "ok");
+  state.classList.toggle("is-bad", status === "error");
+  const usable = status !== "skip";
+  if (startBtn) {
+    startBtn.disabled = !usable || running;
+    startBtn.title = running ? "Daemon läuft bereits" : "";
+  }
+  if (restartBtn) restartBtn.disabled = !usable;
+}
+
+async function daemonAction(action) {
+  setError("daemon-msg");
+  const startBtn = $("daemon-start");
+  const restartBtn = $("daemon-restart");
+  if (startBtn) startBtn.disabled = true;
+  if (restartBtn) restartBtn.disabled = true;
+  try {
+    const res = await api("/api/v1/ops/otobo-daemon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    renderDaemon({
+      ok: Boolean(data.running) || action === "stop",
+      status: data.running ? "ok" : action === "stop" ? "error" : "error",
+      detail: data.detail || (data.running ? "running" : "not running"),
+    });
+    await refreshStatus();
+  } catch (err) {
+    setError("daemon-msg", String(err));
+    await refreshStatus().catch(() => {});
+  } finally {
+    /* buttons restored by renderDaemon via refreshStatus */
+  }
+}
+
 async function refreshStatus() {
   const data = await (await api("/api/v1/ops/status")).json();
   $("health").innerHTML = [
@@ -149,6 +215,8 @@ async function refreshStatus() {
     healthCard("VMware", data.vmware),
     healthCard("Katalog", data.catalog),
   ].join("");
+
+  renderDaemon(data.otobo_daemon);
 
   const jobs = data.jobs || {};
   const keys = ["queued", "ip_reserved", "provisioning", "completed", "failed"];
@@ -437,11 +505,6 @@ function fillSettings(settings) {
   renderVmware();
   updateSshHostHint();
   updateSetupBanner(settings);
-  const ws = $("webservice-name");
-  if (ws) {
-    const name = String(settings.otobo_webservice_name || "").trim();
-    if (name) ws.value = name;
-  }
 }
 
 async function loadSettings() {
@@ -465,14 +528,14 @@ function updateSshHostHint() {
   const host = $("s-otobo_ssh_host").value.trim();
   const fromUrl = otoboUrlHost();
   if (host) {
-    hint.textContent = "Nur setzen, wenn SSH anders erreichbar ist als die OTOBO-URL.";
+    hint.textContent = "Nur wenn SSH anders erreichbar ist als die OTOBO-URL.";
     return;
   }
   if (fromUrl) {
-    hint.textContent = `Leer lassen. Setup nutzt dann ${fromUrl} aus der OTOBO-URL.`;
+    hint.textContent = `Leer = ${fromUrl} aus der OTOBO-URL.`;
     return;
   }
-  hint.textContent = "Leer lassen = Host aus der OTOBO-URL oben.";
+  hint.textContent = "Leer = Host aus der OTOBO-URL.";
 }
 
 function updateSetupBanner(settings) {
@@ -490,15 +553,14 @@ const GUIDE_STEPS = [
     skippable: false,
     targets: ["fs-webhook"],
     body:
-      "Fehlt der Key, legt ihn das OTOBO-Setup an. Schon hinterlegt: Feld leer lassen. Neu erzeugen nur zum Rotieren. Erlaubte IPs: OTOBO-IP, sonst jede Quelle.",
+      "Key fehlt: legt das OTOBO-Setup an. Schon da: Feld leer lassen. Erlaubte IPs = OTOBO-IP.",
   },
   {
     title: "OTOBO",
     skippable: false,
     targets: ["fs-otobo"],
     req: ["s-otobo_url", "s-otobo_user_login", "s-otobo_password"],
-    body:
-      "Pflicht: URL, Login, Passwort (wenn noch keins hinterlegt). Webservice-Name nicht nötig — das OTOBO-Setup legt den Webservice an und schreibt den Namen hierher.",
+    body: "URL, Login und Passwort (leer lassen, wenn schon hinterlegt).",
   },
   {
     title: "SSH",
@@ -507,30 +569,27 @@ const GUIDE_STEPS = [
     openDetails: "fs-ssh",
     req: ["s-otobo_ssh_user", "s-otobo_ssh_key", "s-otobo_home", "s-otobo_os_user"],
     body:
-      "Werft verbindet sich per SSH auf die OTOBO-VM und legt dort Webservice und den Prozess „VM Provisioning“ an. User/Home/OS-User gelten dort. OTOBO Home ist das Installationsverzeichnis auf der OTOBO-VM (meist /opt/otobo). SSH-Key-Pfad: privater Key auf der Werft-Maschine, nicht die .pub. SSH-Host leer lassen (= Host aus der OTOBO-URL).",
+      "Für das OTOBO-Setup: SSH zur OTOBO-VM. Key-Pfad = privater Key auf Werft. Host leer = aus der OTOBO-URL.",
   },
   {
     title: "NetBox",
     skippable: true,
     targets: ["fs-netbox"],
     req: ["s-netbox_url", "s-netbox_token"],
-    body:
-      "URL und Token, wenn du IPs reservieren willst. Sonst überspringen.",
+    body: "URL und Token für IP-Reservierung — oder überspringen.",
   },
   {
     title: "Hypervisor",
     skippable: true,
     targets: ["fs-proxmox", "fs-vmware"],
-    body:
-      "Mindestens Proxmox oder VMware. Cluster: eine API, nicht jeden Node. Ohne Hypervisor bleiben die Ticket-Dropdowns leer.",
+    body: "Mindestens Proxmox oder VMware. Cluster: eine API, nicht jeden Node.",
   },
   {
     title: "Speichern",
     skippable: false,
     save: true,
     targets: ["settings-save"],
-    body:
-      "Speichern, dann OTOBO-Setup: Werft-URL prüfen, zuerst Dry-Run.",
+    body: "Speichern, dann Tab OTOBO-Setup — zuerst Dry-Run.",
   },
 ];
 
@@ -609,11 +668,7 @@ function openGuide() {
 function finishGuideToSetup() {
   closeGuide();
   $("dry-run").checked = true;
-  const fromSettings = $("s-otobo_webservice_name").value.trim();
-  if (fromSettings) $("webservice-name").value = fromSettings;
-  else if (!$("webservice-name").value.trim()) $("webservice-name").value = "REST-API";
   setTab("setup", { fromGuide: true });
-  $("middleware-url").focus();
 }
 
 async function saveSettings() {
@@ -725,6 +780,11 @@ function setTab(name, opts = {}) {
   return Promise.resolve();
 }
 
+function defaultMiddlewareUrl() {
+  // OTOBO ruft den Webhook typischerweise über Port 8000 (HTTP) an, nicht die HTTPS-Ops-UI.
+  return `http://${window.location.hostname}:8000`;
+}
+
 async function runSetup(event) {
   event.preventDefault();
   const btn = $("setup-run");
@@ -734,8 +794,8 @@ async function runSetup(event) {
   const body = {
     confirm: "setup",
     dry_run: $("dry-run").checked,
-    middleware_url: $("middleware-url").value.trim(),
-    webservice_name: $("webservice-name").value.trim(),
+    middleware_url: defaultMiddlewareUrl(),
+    webservice_name: $("s-otobo_webservice_name").value.trim() || "REST-API",
     skip_catalog_sync: $("skip-catalog").checked,
   };
   try {
@@ -880,6 +940,9 @@ $("logout").addEventListener("click", async () => {
   showPhase("login");
 });
 
+$("daemon-start")?.addEventListener("click", () => daemonAction("start"));
+$("daemon-restart")?.addEventListener("click", () => daemonAction("restart"));
+
 $("settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
@@ -942,7 +1005,6 @@ document.querySelectorAll(".tab").forEach((btn) => {
   btn.addEventListener("click", () => setTab(btn.dataset.tab));
 });
 $("setup-form").addEventListener("submit", runSetup);
-$("middleware-url").value = `${window.location.protocol === "https:" ? "http:" : window.location.protocol}//${window.location.hostname}:8000`;
 
 boot();
 setInterval(() => {

@@ -36,6 +36,7 @@ class OpsStatusResponse(BaseModel):
     redis: OpsComponent
     worker: OpsComponent
     otobo: OpsComponent
+    otobo_daemon: OpsComponent = Field(default_factory=lambda: OpsComponent(ok=True, detail="", status="skip"))
     netbox: OpsComponent
     proxmox: OpsComponent
     vmware: OpsComponent
@@ -44,6 +45,10 @@ class OpsStatusResponse(BaseModel):
     recent: list[OpsJobRow]
     hosts: list[OpsHostRow]
     config: dict[str, str]
+
+
+class OpsDaemonRequest(BaseModel):
+    action: Literal["start", "restart", "stop"]
 
 
 class OpsSetupRequest(BaseModel):

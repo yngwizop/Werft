@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import (
     INIT_PASSWORD,
+    INIT_USERNAME,
     allow_login_attempt,
     clear_session_cookie,
     client_ip,
@@ -18,9 +19,16 @@ from app.core.auth import (
 )
 from app.db import get_db
 from app.models.auth import OpsUser
-from app.schemas.auth import AuthUserResponse, LoginRequest, PasswordChangeRequest
+from app.schemas.auth import AuthBootstrapResponse, AuthUserResponse, LoginRequest, PasswordChangeRequest
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+
+@router.get("/bootstrap", response_model=AuthBootstrapResponse)
+def bootstrap_info(db: Session = Depends(get_db)) -> AuthBootstrapResponse:
+    """Unauthenticated: show default-password hint only while still required."""
+    user = db.query(OpsUser).filter(OpsUser.username == INIT_USERNAME).one_or_none()
+    return AuthBootstrapResponse(default_credentials=bool(user and user.must_change_password))
 
 
 @router.post("/login")

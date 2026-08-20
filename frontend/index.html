@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Werft</title>
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css?v=13" />
+    <link rel="stylesheet" href="/styles.css?v=20" />
   </head>
   <body>
     <div id="gate" class="gate">
       <form id="login-form" class="gate-card">
         <h1>Werft</h1>
-        <p class="muted">Anmelden. Erstes Passwort: <code>changeme</code> — danach sofort ändern.</p>
+        <p id="login-hint" class="muted">Anmelden.</p>
         <label>
           Benutzer
           <input id="login-user" name="username" type="text" autocomplete="username" required />
@@ -49,7 +49,7 @@
             <img src="/logo.svg" alt="" class="logo" width="52" height="56" />
             <span class="wordmark-rest">erft</span>
           </h1>
-          <p class="muted">Ops-Konsole · Status, Jobs, Einstellungen, OTOBO-Setup</p>
+          <p class="muted">Ops-Konsole</p>
         </div>
         <div class="top-right">
           <nav class="tabs" role="tablist">
@@ -64,6 +64,17 @@
       <main>
         <section id="panel-status" class="panel">
           <div id="health" class="cards"></div>
+          <div id="daemon-bar" class="daemon-bar">
+            <div>
+              <strong>OTOBO-Daemon</strong>
+              <span id="daemon-state" class="muted">—</span>
+            </div>
+            <div class="daemon-actions">
+              <button type="button" id="daemon-start" class="secondary">Starten</button>
+              <button type="button" id="daemon-restart" class="secondary">Neustart</button>
+            </div>
+            <p id="daemon-msg" class="form-error" hidden></p>
+          </div>
           <h2>Jobs</h2>
           <div id="job-counts" class="counts"></div>
           <div class="table-wrap">
@@ -121,10 +132,7 @@
           <form id="settings-form" class="form form-wide">
             <fieldset id="fs-webhook">
               <legend>Webhook</legend>
-              <p class="hint">
-                Fehlt der Key, legt ihn das OTOBO-Setup an. Schon da: Feld leer lassen.
-                Nach <em>Genehmigen</em> ruft OTOBO Werft damit auf — nicht das OTOBO-Passwort.
-              </p>
+              <p class="hint">OTOBO ruft Werft nach <em>Genehmigen</em> damit auf. Fehlt der Key, legt ihn das OTOBO-Setup an.</p>
               <label>
                 API-Key
                 <input id="s-webhook_api_key" type="password" autocomplete="off" />
@@ -135,26 +143,23 @@
               <label>
                 Erlaubte Quell-IPs
                 <input id="s-webhook_allow_from" type="text" placeholder="z. B. 192.0.2.20" />
-                <span class="field-help">Kommagetrennt. Leer = jede Quelle.</span>
+                <span class="field-help">Kommagetrennt. Leer = jede Quelle — Produktion: OTOBO-IP.</span>
               </label>
             </fieldset>
             <fieldset id="fs-otobo">
               <legend>OTOBO</legend>
-              <p class="hint">Damit schreibt Werft ins Ticket.</p>
+              <p class="hint">Zugang, damit Werft Tickets aktualisieren kann.</p>
               <label><span class="lbl">URL</span> <input id="s-otobo_url" type="url" /></label>
               <label><span class="lbl">Login</span> <input id="s-otobo_user_login" type="text" /></label>
               <label><span class="lbl">Passwort</span> <input id="s-otobo_password" type="password" autocomplete="off" /></label>
-              <label>
-                Webservice
-                <input id="s-otobo_webservice_name" type="text" placeholder="legt OTOBO-Setup an" />
-                <span class="field-help">Optional. Setup erstellt den Webservice und trägt den Namen ein.</span>
-              </label>
               <label class="check"><input id="s-otobo_verify_ssl" type="checkbox" /> TLS prüfen</label>
               <details class="advanced">
-                <summary>Ticket-Status (legt das OTOBO-Setup an)</summary>
-                <p class="hint">
-                  Nur ändern, wenn die Namen in OTOBO anders heißen.
-                </p>
+                <summary>Ticket-Status &amp; Webservice</summary>
+                <p class="hint">Nur ändern, wenn die Namen in OTOBO anders heißen. Webservice legt das Setup an.</p>
+                <label>
+                  Webservice
+                  <input id="s-otobo_webservice_name" type="text" placeholder="REST-API" />
+                </label>
                 <label>Status Provisioning <input id="s-otobo_status_provisioning" type="text" /></label>
                 <label>Status Done <input id="s-otobo_status_done" type="text" /></label>
                 <label>Status Failed <input id="s-otobo_status_failed" type="text" /></label>
@@ -162,7 +167,7 @@
               <details class="advanced" id="fs-ssh">
                 <summary>SSH von Werft zur OTOBO-Box</summary>
                 <p class="hint">
-                  Werft loggt sich per SSH auf der OTOBO-VM ein und legt dort Webservice und den Prozess „VM Provisioning“ an. User, Home und OS-User gelten auf der OTOBO-VM. SSH-Key-Pfad: privater Key auf der Werft-Maschine (ohne .pub).
+                  Nur für OTOBO-Setup. User/Home/OS-User gelten auf der OTOBO-VM; der Key liegt auf der Werft-Maschine.
                 </p>
                 <label>
                   SSH-Host
@@ -174,12 +179,12 @@
                 <label>
                   <span class="lbl">SSH-Key-Pfad</span>
                   <input id="s-otobo_ssh_key" type="text" placeholder="/root/.ssh/id_ed25519" />
-                  <span class="field-help">Privater Key auf der Werft-Maschine, z. B. /root/.ssh/id_ed25519 — nicht id_ed25519.pub. Der öffentliche Key muss auf der OTOBO-VM in authorized_keys stehen.</span>
+                  <span class="field-help">Privater Key auf Werft (ohne .pub).</span>
                 </label>
                 <label>
                   <span class="lbl">OTOBO Home</span>
                   <input id="s-otobo_home" type="text" placeholder="/opt/otobo" />
-                  <span class="field-help">Installationsverzeichnis auf der OTOBO-VM, meist /opt/otobo — dort liegt bin/otobo.Console.pl.</span>
+                  <span class="field-help">Installationsverzeichnis auf der OTOBO-VM.</span>
                 </label>
                 <label><span class="lbl">OTOBO OS-User</span> <input id="s-otobo_os_user" type="text" placeholder="otobo" /></label>
               </details>
@@ -213,22 +218,11 @@
         <section id="panel-setup" class="panel is-hidden">
           <div class="panel-head">
             <p class="muted">
-              Zuerst Dry-Run. Werft-URL so, wie OTOBO sie erreicht
-              (Lab: <code>http://&lt;werft-ip&gt;:8000</code>).
-              Auf OTOBO: SSH mit <code>sudo -u otobo</code>, Paket
-              DynamicFieldScreen, Daemon muss laufen.
+              Webservice und Prozess auf OTOBO. Zuerst Dry-Run.
             </p>
             <button type="button" id="setup-to-guide" class="secondary">Zuerst einrichten</button>
           </div>
           <form id="setup-form" class="form">
-            <label>
-              Werft-URL
-              <input id="middleware-url" name="middleware_url" type="url" required />
-            </label>
-            <label>
-              Webservice-Name
-              <input id="webservice-name" name="webservice_name" type="text" value="REST-API" required />
-            </label>
             <label class="check">
               <input id="dry-run" type="checkbox" checked />
               Dry-Run (nichts schreiben)
@@ -286,6 +280,6 @@
         </form>
       </div>
     </div>
-    <script src="/app.js?v=15"></script>
+    <script src="/app.js?v=22"></script>
   </body>
 </html>

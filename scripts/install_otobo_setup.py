@@ -194,39 +194,63 @@ else {
           . "). Refusing to change Host. Use a new --webservice-name or --force-requester-host.\n";
     }
 
-    # Additive provider ops + routes
-    $cfg->{Provider}{Transport}{Type} ||= "HTTP::REST";
-    $cfg->{Provider}{Transport}{Config}{MaxLength} ||= "10000000";
-    for my $op (keys %{ $template->{Provider}{Operation} }) {
-        $cfg->{Provider}{Operation}{$op} ||= $template->{Provider}{Operation}{$op};
-        $cfg->{Provider}{Transport}{Config}{RouteOperationMapping}{$op}
-          ||= $template->{Provider}{Transport}{Config}{RouteOperationMapping}{$op};
+    my $want_map = $template->{Requester}{Transport}{Config}{InvokerControllerMapping}{ProvisionVM} || {};
+    my $have_map = $cfg->{Requester}{Transport}{Config}{InvokerControllerMapping}{ProvisionVM} || {};
+    my $have_key_add = $cfg->{Requester}{Transport}{Config}{AdditionalHeaders}{"X-Api-Key"} // "";
+    my $have_key_out = $cfg->{Requester}{Transport}{Config}{OutboundHeaders}{"X-Api-Key"} // "";
+    my @missing_ops;
+    for my $op (sort keys %{ $template->{Provider}{Operation} || {} }) {
+        push @missing_ops, $op unless $cfg->{Provider}{Operation}{$op};
     }
-    $cfg->{Requester}{Transport}{Type} = "HTTP::REST";
-    $cfg->{Requester}{Transport}{Config}{DefaultCommand} ||= "POST";
-    $cfg->{Requester}{Transport}{Config}{Timeout} ||= "120";
-    $cfg->{Requester}{Invoker}{ProvisionVM} = $template->{Requester}{Invoker}{ProvisionVM};
-    $cfg->{Requester}{Transport}{Config}{InvokerControllerMapping}{ProvisionVM}
-      = $template->{Requester}{Transport}{Config}{InvokerControllerMapping}{ProvisionVM};
-    $cfg->{Requester}{Transport}{Config}{Host} = $mw;
-    $cfg->{Requester}{Transport}{Config}{AdditionalHeaders}{"X-Api-Key"} = $api_key;
-    $cfg->{Requester}{Transport}{Config}{OutboundHeaders}{"X-Api-Key"} = $api_key;
-    $cfg->{Debugger} ||= $template->{Debugger};
-
-    say_step(
-        $dry
-        ? "WOULD merge ProvisionVM into webservice $target->{Name}"
-        : "UPDATE webservice $target->{Name} (merge ProvisionVM, keep other invokers)"
+    my @diff;
+    push @diff, "ProvisionVM missing" unless ws_has_provision_invoker($cfg);
+    push @diff, "Host $old_host -> $mw" if lc($old_host) ne lc($mw);
+    push @diff, "Controller mapping" if (
+        ($have_map->{Command} // "") ne ($want_map->{Command} // "")
+        || ($have_map->{Controller} // "") ne ($want_map->{Controller} // "")
     );
-    if (!$dry) {
-        my $ok = $WS->WebserviceUpdate(
-            ID      => $target->{ID},
-            Name    => $target->{Name},
-            Config  => $cfg,
-            ValidID => $target->{ValidID} || 1,
-            UserID  => $UserID,
+    push @diff, "X-Api-Key" if ($have_key_add ne $api_key || $have_key_out ne $api_key);
+    push @diff, "Provider ops: " . join(",", @missing_ops) if @missing_ops;
+
+    if (!@diff) {
+        say_step("SKIP webservice $target->{Name} (ProvisionVM already configured)");
+    }
+    else {
+        # Additive provider ops + routes
+        $cfg->{Provider}{Transport}{Type} ||= "HTTP::REST";
+        $cfg->{Provider}{Transport}{Config}{MaxLength} ||= "10000000";
+        for my $op (keys %{ $template->{Provider}{Operation} }) {
+            $cfg->{Provider}{Operation}{$op} ||= $template->{Provider}{Operation}{$op};
+            $cfg->{Provider}{Transport}{Config}{RouteOperationMapping}{$op}
+              ||= $template->{Provider}{Transport}{Config}{RouteOperationMapping}{$op};
+        }
+        $cfg->{Requester}{Transport}{Type} = "HTTP::REST";
+        $cfg->{Requester}{Transport}{Config}{DefaultCommand} ||= "POST";
+        $cfg->{Requester}{Transport}{Config}{Timeout} ||= "120";
+        $cfg->{Requester}{Invoker}{ProvisionVM} = $template->{Requester}{Invoker}{ProvisionVM};
+        $cfg->{Requester}{Transport}{Config}{InvokerControllerMapping}{ProvisionVM}
+          = $template->{Requester}{Transport}{Config}{InvokerControllerMapping}{ProvisionVM};
+        $cfg->{Requester}{Transport}{Config}{Host} = $mw;
+        $cfg->{Requester}{Transport}{Config}{AdditionalHeaders}{"X-Api-Key"} = $api_key;
+        $cfg->{Requester}{Transport}{Config}{OutboundHeaders}{"X-Api-Key"} = $api_key;
+        $cfg->{Debugger} ||= $template->{Debugger};
+
+        my $reason = join("; ", @diff);
+        say_step(
+            $dry
+            ? "WOULD merge ProvisionVM into webservice $target->{Name} ($reason)"
+            : "UPDATE webservice $target->{Name} ($reason)"
         );
-        die "WebserviceUpdate failed\n" unless $ok;
+        if (!$dry) {
+            my $ok = $WS->WebserviceUpdate(
+                ID      => $target->{ID},
+                Name    => $target->{Name},
+                Config  => $cfg,
+                ValidID => $target->{ValidID} || 1,
+                UserID  => $UserID,
+            );
+            die "WebserviceUpdate failed\n" unless $ok;
+        }
     }
 }
 
@@ -554,13 +578,52 @@ def main() -> int:
 
     if not args.skip_daemon_check:
         print("\nOTOBO-Daemon:")
-        subprocess.call(
-            [
-                *_ssh_cmd(s),
-                f"sudo -u {os_user} {s.otobo_home.rstrip('/')}/bin/otobo.Daemon.pl status",
-            ]
+        daemon_bin = f"{s.otobo_home.rstrip('/')}/bin/otobo.Daemon.pl"
+        status = subprocess.run(
+            [*_ssh_cmd(s), f"sudo -u {os_user} {daemon_bin} status"],
+            capture_output=True,
+            text=True,
         )
-        print("Asynchroner Invoker braucht einen laufenden Daemon: otobo.Daemon.pl start")
+        status_text = (status.stdout or "") + (status.stderr or "")
+        if status_text.strip():
+            print(status_text.rstrip())
+        lowered = status_text.lower()
+        if "not running" in lowered:
+            running = False
+        elif "running" in lowered:
+            running = True
+        else:
+            running = False
+            print("WARN: Daemon-Status unklar — starte nicht automatisch.")
+        if running:
+            print("SKIP daemon (already running)")
+        elif "not running" not in lowered:
+            pass
+        elif args.dry_run:
+            print("WOULD start daemon (asynchroner Invoker ProvisionVM)")
+        else:
+            print("START daemon…")
+            start = subprocess.run(
+                [*_ssh_cmd(s), f"sudo -u {os_user} {daemon_bin} start"],
+                capture_output=True,
+                text=True,
+            )
+            if start.stdout.strip():
+                print(start.stdout.rstrip())
+            if start.stderr.strip():
+                print(start.stderr.rstrip())
+            check = subprocess.run(
+                [*_ssh_cmd(s), f"sudo -u {os_user} {daemon_bin} status"],
+                capture_output=True,
+                text=True,
+            )
+            check_text = (check.stdout or "") + (check.stderr or "")
+            if check_text.strip():
+                print(check_text.rstrip())
+            if "not running" in check_text.lower():
+                print("WARN: Daemon start fehlgeschlagen — auf der OTOBO-VM prüfen.")
+            else:
+                print("Daemon läuft.")
 
     if args.write_vault and not args.dry_run:
         from app.core.runtime_settings import save_vault

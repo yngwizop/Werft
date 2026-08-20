@@ -30,7 +30,7 @@ Das Setup legt Status, Queue, Felder, Webservice und Prozess an. Folgendes muss 
 |---|---|
 | SSH-Zugang, Key in Werft-Einstellungen, `sudo -u otobo` ohne Passwort | `ssh … sudo -u otobo /opt/otobo/bin/otobo.Console.pl Maint::Config::Rebuild` (Pfad ggf. `OTOBO_HOME`) |
 | Paket **Znuny4OTOBO-DynamicFieldScreen** | Admin → Paketverwaltung. Console muss `Znuny4OTOBO::DynamicFieldScreen::Add` kennen. Ohne das Paket schlägt `deploy_otobo_vm_process.py` fehl. |
-| Daemon | `sudo -u otobo /opt/otobo/bin/otobo.Daemon.pl status` — muss **running** sein. Setup startet ihn nicht. |
+| Daemon | Setup startet `otobo.Daemon.pl` bei Bedarf (nicht im Dry-Run). Nach Reboot ggf. systemd. |
 | Process Management + GenericInterface (HTTP::REST) | Standard-OTOBO; sonst kein Prozessticket und kein Webservice. |
 
 Katalog-Dropdowns (Node, Vorlage, Datastore) füllt erst `catalog-sync` bzw. der Setup-Lauf ohne „Katalog überspringen“. Bis dahin sind die Felder leer, der Prozess existiert trotzdem.
@@ -169,7 +169,7 @@ cd /opt/werft && .venv/bin/python scripts/sync_otobo_catalog.py
 
 SSH und Katalog-Intervall stehen in der Ops-UI (Vault). SSH-Host leer lassen, dann gilt der Host aus der OTOBO-URL. Nodes/ISOs kommen live von Proxmox und ESXi/vCenter. Der Sync schreibt auch die ACLs `200-VM-Hypervisor-Proxmox` / `201-VM-Hypervisor-VMware` (Node + Vorlage abhängig vom Hypervisor).
 
-API-Liste: `GET /api/v1/catalog/images/public?hypervisor=proxmox` bzw. `?hypervisor=vmware`
+API-Liste (Ops-Login): `GET /api/v1/catalog/images/public?hypervisor=proxmox` bzw. `?hypervisor=vmware`. Ohne Session: dieselben Pfade ohne `/public` plus Webhook-`X-Api-Key`.
 
 **Wichtig:** Für Automatisierung bevorzugt **Cloud-Init-Templates** (Proxmox/vCenter-Clone). ISO-Auswahl (Proxmox und standalone ESXi) erzeugt nur eine VM mit eingelegtem Medium — die OS-Installation ist dann manuell/Autoinstall, nicht vollautomatisch.
 
@@ -187,13 +187,14 @@ Rückmeldungs-Status (müssen in OTOBO existieren; Namen in der GUI unter OTOBO 
 
 ## 5. Daemon
 
-Asynchrone Invoker brauchen den OTOBO-Daemon. Das Setup-Skript und die GUI **prüfen** den Status und starten ihn nicht:
+Asynchrone Invoker brauchen den OTOBO-Daemon. Das Setup **prüft** den Status und **startet** ihn bei Bedarf (Dry-Run nur „WOULD start“):
 
 ```bash
 sudo -u otobo /opt/otobo/bin/otobo.Daemon.pl status
-# ggf. start und nach Reboot dauerhaft halten (systemd-Unit der OTOBO-Box)
 sudo -u otobo /opt/otobo/bin/otobo.Daemon.pl start
 ```
+
+Nach Reboot dauerhaft halten (systemd-Unit auf der OTOBO-Box) — sonst muss Setup/Admin ihn erneut starten.
 
 ---
 
@@ -236,5 +237,5 @@ curl -sS -k -X POST https://<werft-host>/api/v1/provision-vm \
 - [ ] Setup-Skript `scripts/install_otobo_setup.py` **oder** GUI-Tab OTOBO-Setup
 - [ ] Dynamische Felder **nicht** auf AgentTicketPhone; Prozess **VM Provisioning** deployed
 - [ ] `catalog-sync` läuft bzw. `scripts/sync_otobo_catalog.py` einmal ausgeführt
-- [ ] OTOBO-Daemon läuft (`otobo.Daemon.pl start`, Setup startet ihn nicht)
+- [ ] OTOBO-Daemon läuft (Setup startet ihn bei Bedarf; nach Reboot systemd prüfen)
 - [ ] Middleware API + Worker + nginx (`https://…/` Ops-UI mit Login, Webhook ohne Session)

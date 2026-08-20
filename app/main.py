@@ -19,7 +19,7 @@ infra = get_infra()
 logging.basicConfig(level=infra.log_level)
 logger = logging.getLogger(__name__)
 
-OPEN_EXACT = {"/healthz", "/api/v1/auth/login"}
+OPEN_EXACT = {"/healthz", "/api/v1/auth/login", "/api/v1/auth/bootstrap"}
 PASSWORD_OK = {"/api/v1/auth/password", "/api/v1/auth/me", "/api/v1/auth/logout"}
 
 
