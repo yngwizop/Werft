@@ -68,35 +68,68 @@ Werft installiert das nicht — muss auf der OTOBO-Box stehen, bevor das Setup-S
 
 Details: [docs/otobo-setup.md](docs/otobo-setup.md).
 
-## Starten
+## Schnellstart
+
+Voraussetzungen auf dem Werft-Host: **Docker Compose** und **Git**.
+
+1. **Repo holen**
+
+```bash
+git clone https://github.com/yngwizop/Werft.git
+cd Werft
+```
+
+2. **`.env` anlegen** (nur für Compose — alles andere später in der UI)
+
+```bash
+cp .env.example .env
+```
+
+```bash
+TLS_CN=<werft-hostname-oder-ip>
+OTOBO_SSH_KEY=/pfad/zum/privaten/key
+```
+
+| Variable | Bedeutung |
+|---|---|
+| `TLS_CN` | Common Name fürs selbstsignierte nginx-Zertifikat (Hostname oder IP von Werft) |
+| `OTOBO_SSH_KEY` | **Nur der Dateipfad** zum privaten SSH-Key **auf dem Werft-Host** (z. B. `/root/.ssh/id_ed25519`). Wird in den Container gemountet. |
+
+SSH-User, OTOBO-Home und OS-User (Default oft `root` / `/opt/otobo` / `otobo`) setzt du in den **Einstellungen**, nicht in `.env`. Auf der OTOBO-VM muss der passende **öffentliche** Key in `authorized_keys` liegen, und der SSH-User sollte ohne Passwort `sudo -u <otobo-os-user>` können.
+
+3. **Starten**
 
 ```bash
 docker compose up --build -d
 ```
 
-`.env` ist nur noch für Compose: `TLS_CN` (Zertifikat) und optional `OTOBO_SSH_KEY` (Pfad der Key-Datei im Container). Zugänge liegen in der Werft-UI.
+4. **Ops-UI öffnen** — `https://<werft-host>/`  
+   Erstes Login: `admin` / `changeme` → Passwort sofort ändern.
+
+5. **Einstellungen** (Assistent starten über "Einrichtung starten" oder manuell): Webhook, OTOBO (URL/Login/SSH), IPAM (NetBox oder Nautobot), mindestens ein Hypervisor → **Speichern**.
+
+6. **OTOBO-Setup**-Tab: zuerst **Dry-Run**, dann ohne Häkchen ausführen.  
+   Legt Webservice, Prozess und Felder auf OTOBO an (idempotent). Webhook-Ziel ist automatisch `http://<werft-host>:8000`.
+
+7. **Prüfen:** Status-Tab (OTOBO, IPAM, Hypervisor, Daemon). Agenten: *Neues Prozessticket → VM Provisioning → Genehmigen*.
 
 | | |
 |---|---|
 | Ops-UI | `https://<werft-host>/` (Session-Login) |
-| Webhook | `POST /api/v1/provision-vm` (API-Key, ohne Login; optional IP-Allowlist) |
-| Health | `GET /healthz` (ohne Login) |
+| Webhook | `POST /api/v1/provision-vm` (API-Key; optional IP-Allowlist) |
+| Health | `GET /healthz` |
 
-## OTOBO konfigurieren
+Details zu OTOBO-Voraussetzungen: unten und [docs/otobo-setup.md](docs/otobo-setup.md). Agenten-Ablauf: [docs/otobo-workflow.md](docs/otobo-workflow.md).
 
-Webservice, Status, Queue, Felder und Prozess legt Werft einmalig per SSH an — idempotent, bestehendes bleibt. Technische Details: [docs/otobo-setup.md](docs/otobo-setup.md).
+## OTOBO konfigurieren (Details)
 
-**Empfohlener Start:** Werft-UI → Tab **OTOBO-Setup**.
+Webservice, Status, Queue, Felder und Prozess legt Werft per SSH an — idempotent, bestehendes bleibt. Bevorzugt über den Tab **OTOBO-Setup** (Schritt 6 oben).
 
-1. Unter **Einstellungen** OTOBO (URL, Login, SSH), Webhook-Key, IPAM (NetBox oder Nautobot) und Hypervisor eintragen und speichern.
-2. Tab **OTOBO-Setup**: zuerst **Dry-Run** (schreibt nichts). Die Webhook-Ziel-URL setzt Werft automatisch (`http://<werft-host>:8000`).
-3. Häkchen weg, nochmal ausführen. Webservice-Name und API-Key landen in der Werft-DB und im OTOBO-Invoker.
-
-Dasselbe per CLI:
+CLI alternativ:
 
 ```bash
 python scripts/install_otobo_setup.py --yes --dry-run \
   --werft-url http://<werft-host>:8000
 ```
 
-Ohne `--dry-run` wird geschrieben. `--write-vault` speichert Webservice-Name und API-Key in die verschlüsselte DB (nicht in `.env`; die GUI setzt das automatisch).
+Ohne `--dry-run` wird geschrieben. `--write-vault` speichert Webservice-Name und API-Key in die verschlüsselte DB (die GUI setzt das automatisch).
