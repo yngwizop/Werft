@@ -2,24 +2,22 @@
 
 OTOBO · NetBox · Nautobot · Proxmox · VMware ESXi · vCenter · IPAM · VM-Provisioning · Katalog-Sync · GenericInterface · Self-Service
 
-OTOBO-Middleware, die NetBox und Hypervisoren wie Proxmox/VMware zu einem Workflow verbindet.
+OTOBO-Middleware, die NetBox/Nautobot und Hypervisoren wie Proxmox/VMware zu einem Workflow verbindet.
 
-Für **VM-Provisioning** und Automatisierung: genehmigte **OTOBO**-Prozesstickets werden zu VMs auf **Proxmox VE** oder **VMware** (ESXi / vCenter), IPs kommen aus **NetBox**-IPAM (**Nautobot** geplant), Status und IP zurück ins Ticket. Ein periodischer **Katalog-Sync** füllt die OTOBO-Dropdowns (Nodes, Vorlagen/ISOs, Datastores) aus den Hypervisoren. Anbindung über GenericInterface-Webhook; Agenten arbeiten nur in OTOBO.
+Für **VM-Provisioning** und Automatisierung: genehmigte **OTOBO**-Prozesstickets werden zu VMs auf **Proxmox VE** oder **VMware** (ESXi / vCenter), IPs kommen aus **NetBox** oder **Nautobot** (IPAM), Status und IP zurück ins Ticket. Ein periodischer **Katalog-Sync** füllt die OTOBO-Dropdowns (Nodes, Vorlagen/ISOs, Datastores) aus den Hypervisoren. Anbindung über GenericInterface-Webhook; Agenten arbeiten nur in OTOBO.
 
 
 ## Wozu?
 
-Admins sollen VMs **über ein OTOBO-Ticket** anfordern und freigeben — ohne sich in Proxmox, vCenter oder NetBox einzuloggen.  
+Admins sollen VMs **über ein OTOBO-Ticket** anfordern und freigeben — ohne sich in Proxmox, vCenter oder NetBox/Nautobot einzuloggen.  
 **Werft** ist die Middleware dazwischen und nimmt die Freigabe aus OTOBO entgegen, reserviert eine IP, baut die VM und schreibt Ergebnis (oder Fehler) zurück ins Ticket.
 
 | Werft verbindet | Rolle |
 |---|---|
 | **OTOBO** | Antrag, Genehmigung, Status im Ticket |
-| **NetBox** | IPAM — IP aus dem gewählten Prefix |
+| **NetBox** oder **Nautobot** | IPAM — IP aus dem gewählten Prefix (in den Einstellungen wählbar) |
 | **Proxmox VE** und/oder **VMware** (ESXi / vCenter) | eigentliches Provisioning |
 | **Katalog-Sync** | Nodes, Vorlagen/ISOs, Datastores → OTOBO-Dropdowns |
-
-**Geplant:** Anbindung an **Nautobot** (neben NetBox) für IPAM/Sync.
 
 Kurz der Ablauf: Prozessticket „VM Provisioning“ → **Genehmigen** → Werft (IP + VM) → Kommentar und Ticket-Status in OTOBO.
 
@@ -30,7 +28,7 @@ In OTOBO ein **Prozessticket** „VM Provisioning“ (kein „Neues Telefon-Tick
 ```text
 Neues Prozessticket → VM Provisioning
         → Genehmigen
-        → Werft: IP in NetBox → VM auf Proxmox oder VMware
+        → Werft: IP in NetBox/Nautobot → VM auf Proxmox oder VMware
         → Erfolg: Kommentar mit IP, Ticket geschlossen
         → Fehler: Kommentar, Status Failed, IP wieder frei
 ```
@@ -51,9 +49,9 @@ Schritt für Schritt für Agenten: [docs/otobo-workflow.md](docs/otobo-workflow.
 |---|---|
 | **Werft** | API, Worker, Ops-UI, Katalog-Sync |
 | **OTOBO** | Antrag und Freigabe. Siehe Voraussetzungen unten. |
-| **NetBox** | Prefix muss existieren; Token darf IPs anlegen und freigeben. (Nautobot: geplant) |
+| **NetBox / Nautobot** | Prefix muss existieren; Token darf IPs anlegen und freigeben. Provider in den Einstellungen wählen. |
 | **Proxmox und/oder VMware** | Mindestens eines. Standalone-ESXi nur ISO; Clone nur mit vCenter. |
-| **Netz** | Werft erreicht OTOBO, NetBox und Hypervisor. OTOBO erreicht den Werft-Webhook (nicht localhost). |
+| **Netz** | Werft erreicht OTOBO, IPAM und Hypervisor. OTOBO erreicht den Werft-Webhook (nicht localhost). |
 
 Zugänge und Hosts werden in der Ops-UI unter **Einstellungen** gepflegt (verschlüsselt in Postgres). Erstes Login: `admin` / `changeme`, danach Passwort ändern.
 
@@ -90,7 +88,7 @@ Webservice, Status, Queue, Felder und Prozess legt Werft einmalig per SSH an —
 
 **Empfohlener Start:** Werft-UI → Tab **OTOBO-Setup**.
 
-1. Unter **Einstellungen** OTOBO (URL, Login, SSH), Webhook-Key, NetBox und Hypervisor eintragen und speichern.
+1. Unter **Einstellungen** OTOBO (URL, Login, SSH), Webhook-Key, IPAM (NetBox oder Nautobot) und Hypervisor eintragen und speichern.
 2. Tab **OTOBO-Setup**: zuerst **Dry-Run** (schreibt nichts). Die Webhook-Ziel-URL setzt Werft automatisch (`http://<werft-host>:8000`).
 3. Häkchen weg, nochmal ausführen. Webservice-Name und API-Key landen in der Werft-DB und im OTOBO-Invoker.
 

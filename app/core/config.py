@@ -29,6 +29,10 @@ class Settings(InfraSettings):
     netbox_url: str = ""
     netbox_token: str = ""
     netbox_verify_ssl: bool = True
+    ipam_provider: str = "netbox"  # netbox | nautobot
+    nautobot_url: str = ""
+    nautobot_token: str = ""
+    nautobot_verify_ssl: bool = True
 
     proxmox_host: str = ""
     proxmox_hosts: str = ""
@@ -89,6 +93,10 @@ VAULT_FIELDS: tuple[str, ...] = (
     "netbox_url",
     "netbox_token",
     "netbox_verify_ssl",
+    "ipam_provider",
+    "nautobot_url",
+    "nautobot_token",
+    "nautobot_verify_ssl",
     "proxmox_host",
     "proxmox_hosts",
     "proxmox_user",
@@ -142,6 +150,7 @@ SECRET_FIELDS: frozenset[str] = frozenset(
         "webhook_hmac_secret",
         "webhook_api_key",
         "netbox_token",
+        "nautobot_token",
         "proxmox_token_value",
         "vmware_password",
         "otobo_password",
@@ -151,6 +160,7 @@ SECRET_FIELDS: frozenset[str] = frozenset(
 BOOL_FIELDS: frozenset[str] = frozenset(
     {
         "netbox_verify_ssl",
+        "nautobot_verify_ssl",
         "proxmox_verify_ssl",
         "vmware_verify_ssl",
         "otobo_verify_ssl",

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.job import JobStatus, ProvisioningJob
 from app.provisioners.factory import get_provisioner
 from app.schemas.otobo import ProvisionVmRequest
-from app.services.netbox import NetBoxService
+from app.services.ipam import IpamClient, get_ipam
 from app.services.otobo import OTOBOClient
 
 logger = logging.getLogger(__name__)
@@ -19,11 +19,14 @@ class Orchestrator:
     def __init__(
         self,
         db: Session,
-        netbox: NetBoxService | None = None,
+        ipam: IpamClient | None = None,
         otobo: OTOBOClient | None = None,
+        *,
+        netbox: IpamClient | None = None,
     ) -> None:
         self.db = db
-        self.netbox = netbox or NetBoxService()
+        # `netbox=` kept for older call sites / tests.
+        self.ipam = ipam or netbox or get_ipam()
         self.otobo = otobo or OTOBOClient()
 
     def run(self, job_id: str) -> None:
@@ -47,7 +50,7 @@ class Orchestrator:
 
         try:
             if not job.reserved_ip:
-                reserved = self.netbox.reserve_ip(request.subnet, request.ticket_id, request.hostname)
+                reserved = self.ipam.reserve_ip(request.subnet, request.ticket_id, request.hostname)
                 job.reserved_ip = reserved.address
                 job.netbox_ip_id = reserved.ip_id
                 reserved_ip_id = reserved.ip_id
@@ -55,7 +58,7 @@ class Orchestrator:
                 self.db.commit()
 
                 disk_gb = request.disks[0].size_gb if request.disks else 0
-                vm_id = self.netbox.create_vm_if_possible(
+                vm_id = self.ipam.create_vm_if_possible(
                     hostname=request.hostname,
                     ticket_id=request.ticket_id,
                     vcpus=request.cpu,
@@ -80,7 +83,7 @@ class Orchestrator:
             self.db.commit()
 
             if job.netbox_ip_id:
-                self.netbox.finalize(ip_id=job.netbox_ip_id, vm_id=job.netbox_vm_id)
+                self.ipam.finalize(ip_id=job.netbox_ip_id, vm_id=job.netbox_vm_id)
             job.status = JobStatus.COMPLETED
             job.error_message = None
             self.db.commit()
@@ -99,13 +102,11 @@ class Orchestrator:
 
         except Exception as exc:
             logger.exception("Provisioning saga failed for job %s", job_id)
-            # Compensate NetBox first.
             try:
-                self.netbox.compensate(ip_id=reserved_ip_id, vm_id=reserved_vm_id)
+                self.ipam.compensate(ip_id=reserved_ip_id, vm_id=reserved_vm_id)
             except Exception as comp_exc:  # noqa: BLE001
                 logger.error("Compensation failed: %s", comp_exc)
 
-            # Best-effort hypervisor cleanup if we got a ref mid-flight.
             if hypervisor_ref:
                 try:
                     get_provisioner(request.hypervisor).destroy(hypervisor_ref)

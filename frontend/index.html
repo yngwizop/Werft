@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Werft</title>
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css?v=20" />
+    <link rel="stylesheet" href="/styles.css?v=24" />
   </head>
   <body>
     <div id="gate" class="gate">
@@ -190,11 +190,27 @@
               </details>
             </fieldset>
             <fieldset id="fs-netbox">
-              <legend>NetBox</legend>
-              <p class="hint">Reserviert die IP zum Subnetz aus dem Ticket.</p>
-              <label><span class="lbl">URL</span> <input id="s-netbox_url" type="url" /></label>
-              <label><span class="lbl">Token</span> <input id="s-netbox_token" type="password" autocomplete="off" /></label>
-              <label class="check"><input id="s-netbox_verify_ssl" type="checkbox" /> TLS prüfen</label>
+              <legend>IPAM</legend>
+              <p class="hint">
+                Provider wählen — URL und Token gelten nur für den gewählten Provider und werden getrennt gespeichert.
+              </p>
+              <label>
+                Provider
+                <select id="s-ipam_provider">
+                  <option value="netbox">NetBox</option>
+                  <option value="nautobot">Nautobot</option>
+                </select>
+              </label>
+              <div id="ipam-fields-netbox">
+                <label><span class="lbl">URL</span> <input id="s-netbox_url" type="url" /></label>
+                <label><span class="lbl">Token</span> <input id="s-netbox_token" type="password" autocomplete="off" /></label>
+                <label class="check"><input id="s-netbox_verify_ssl" type="checkbox" /> TLS prüfen</label>
+              </div>
+              <div id="ipam-fields-nautobot" class="is-hidden">
+                <label><span class="lbl">URL</span> <input id="s-nautobot_url" type="url" /></label>
+                <label><span class="lbl">Token</span> <input id="s-nautobot_token" type="password" autocomplete="off" /></label>
+                <label class="check"><input id="s-nautobot_verify_ssl" type="checkbox" /> TLS prüfen</label>
+              </div>
             </fieldset>
             <fieldset id="fs-proxmox">
               <legend>Proxmox</legend>
@@ -280,6 +296,6 @@
         </form>
       </div>
     </div>
-    <script src="/app.js?v=22"></script>
+    <script src="/app.js?v=24"></script>
   </body>
 </html>

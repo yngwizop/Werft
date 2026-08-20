@@ -92,7 +92,9 @@ def _safe_config(settings: Settings) -> dict[str, str]:
     return {
         "otobo": settings.otobo_url or "—",
         "webservice": settings.otobo_webservice_name or "—",
+        "ipam": (settings.ipam_provider or "netbox").strip().lower(),
         "netbox": settings.netbox_url or "—",
+        "nautobot": settings.nautobot_url or "—",
         "proxmox": proxmox,
         "vmware": vmware,
         "katalog-sync": f"{settings.catalog_sync_interval_seconds}s",
@@ -165,16 +167,27 @@ def _otobo() -> OpsComponent:
         return _error(_short(exc))
 
 
-def _netbox() -> OpsComponent:
+def _ipam() -> OpsComponent:
     settings = get_settings()
-    if not settings.netbox_url:
+    provider = (settings.ipam_provider or "netbox").strip().lower()
+    if provider == "nautobot":
+        base = settings.nautobot_url
+        token = settings.nautobot_token
+        verify = settings.nautobot_verify_ssl
+        label = "Nautobot"
+    else:
+        base = settings.netbox_url
+        token = settings.netbox_token
+        verify = settings.netbox_verify_ssl
+        label = "NetBox"
+    if not base:
         return _skip()
-    url = settings.netbox_url.rstrip("/") + "/api/status/"
+    url = base.rstrip("/") + "/api/status/"
     headers = {}
-    if settings.netbox_token:
-        headers["Authorization"] = f"Token {settings.netbox_token}"
+    if token:
+        headers["Authorization"] = f"Token {token}"
     try:
-        with httpx.Client(verify=settings.netbox_verify_ssl, timeout=PROBE_TIMEOUT) as client:
+        with httpx.Client(verify=verify, timeout=PROBE_TIMEOUT) as client:
             resp = client.get(url, headers=headers)
         if resp.status_code >= 400:
             return _error(f"HTTP {resp.status_code}")
@@ -182,10 +195,16 @@ def _netbox() -> OpsComponent:
         try:
             payload = resp.json()
             if isinstance(payload, dict):
-                version = str(payload.get("netbox-version") or payload.get("version") or "")
+                version = str(
+                    payload.get("nautobot-version")
+                    or payload.get("netbox-version")
+                    or payload.get("version")
+                    or ""
+                )
         except Exception:  # noqa: BLE001
             version = ""
-        return _ok(version or f"HTTP {resp.status_code}")
+        detail = f"{label} {version}".strip() if version else label
+        return _ok(detail)
     except Exception as exc:  # noqa: BLE001
         return _error(_short(exc))
 
@@ -330,7 +349,7 @@ def ops_status(db: Session = Depends(get_db)) -> OpsStatusResponse:
     with ThreadPoolExecutor(max_workers=7) as pool:
         fut_otobo = pool.submit(_otobo)
         fut_daemon = pool.submit(_otobo_daemon)
-        fut_netbox = pool.submit(_netbox)
+        fut_netbox = pool.submit(_ipam)
         fut_proxmox = pool.submit(_proxmox)
         fut_vmware = pool.submit(_vmware)
         fut_redis = pool.submit(_redis)

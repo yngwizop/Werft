@@ -3,6 +3,7 @@ const $ = (id) => document.getElementById(id);
 const SECRET_FIELDS = new Set([
   "webhook_api_key",
   "netbox_token",
+  "nautobot_token",
   "otobo_password",
 ]);
 
@@ -22,9 +23,11 @@ const TEXT_FIELDS = [
   "otobo_home",
   "otobo_os_user",
   "netbox_url",
+  "nautobot_url",
+  "ipam_provider",
 ];
 
-const BOOL_FIELDS = ["otobo_verify_ssl", "netbox_verify_ssl"];
+const BOOL_FIELDS = ["otobo_verify_ssl", "netbox_verify_ssl", "nautobot_verify_ssl"];
 
 function esc(value) {
   return String(value ?? "")
@@ -141,6 +144,14 @@ function healthCard(name, component) {
   </article>`;
 }
 
+function ipamCardLabel(data) {
+  const fromConfig = String(data?.config?.ipam || "").toLowerCase();
+  if (fromConfig === "nautobot") return "Nautobot";
+  const detail = String(data?.netbox?.detail || "").toLowerCase();
+  if (detail.includes("nautobot")) return "Nautobot";
+  return "NetBox";
+}
+
 function ticketCell(job) {
   const id = esc(job.ticket_id);
   if (job.ticket_url) {
@@ -210,7 +221,7 @@ async function refreshStatus() {
     healthCard("Redis", data.redis),
     healthCard("Worker", data.worker),
     healthCard("OTOBO", data.otobo),
-    healthCard("NetBox", data.netbox),
+    healthCard(ipamCardLabel(data), data.netbox),
     healthCard("Proxmox", data.proxmox),
     healthCard("VMware", data.vmware),
     healthCard("Katalog", data.catalog),
@@ -505,7 +516,33 @@ function fillSettings(settings) {
   renderVmware();
   updateSshHostHint();
   updateSetupBanner(settings);
+  const provider = $("s-ipam_provider");
+  if (provider) {
+    const value = String(settings.ipam_provider || "netbox").toLowerCase();
+    provider.value = value === "nautobot" ? "nautobot" : "netbox";
+  }
+  syncIpamProviderFields();
 }
+
+function activeIpamProvider() {
+  const el = $("s-ipam_provider");
+  return el && el.value === "nautobot" ? "nautobot" : "netbox";
+}
+
+function syncIpamProviderFields() {
+  const provider = activeIpamProvider();
+  const nb = $("ipam-fields-netbox");
+  const nt = $("ipam-fields-nautobot");
+  if (nb) nb.classList.toggle("is-hidden", provider !== "netbox");
+  if (nt) nt.classList.toggle("is-hidden", provider !== "nautobot");
+}
+
+function ipamGuideReq() {
+  return activeIpamProvider() === "nautobot"
+    ? ["s-nautobot_url", "s-nautobot_token"]
+    : ["s-netbox_url", "s-netbox_token"];
+}
+
 
 async function loadSettings() {
   const data = await (await api("/api/v1/ops/settings")).json();
@@ -572,11 +609,11 @@ const GUIDE_STEPS = [
       "Für das OTOBO-Setup: SSH zur OTOBO-VM. Key-Pfad = privater Key auf Werft. Host leer = aus der OTOBO-URL.",
   },
   {
-    title: "NetBox",
+    title: "IPAM",
     skippable: true,
     targets: ["fs-netbox"],
-    req: ["s-netbox_url", "s-netbox_token"],
-    body: "URL und Token für IP-Reservierung — oder überspringen.",
+    reqFrom: "ipam",
+    body: "NetBox oder Nautobot wählen — URL und Token gelten nur für diesen Provider (getrennt gespeichert). Oder überspringen.",
   },
   {
     title: "Hypervisor",
@@ -606,7 +643,8 @@ function clearGuideFocus() {
 }
 
 function markGuideRequired(step) {
-  (step.req || []).forEach((id) => {
+  const req = step.reqFrom === "ipam" ? ipamGuideReq() : step.req || [];
+  req.forEach((id) => {
     const input = $(id);
     if (!input) return;
     const label = input.closest("label");
@@ -688,8 +726,9 @@ async function saveSettings() {
 async function guideNext() {
   const step = GUIDE_STEPS[guideIndex];
   if (!step) return;
-  if (step.req) {
-    const missing = step.req.filter((id) => {
+  if (step.req || step.reqFrom) {
+    const req = step.reqFrom === "ipam" ? ipamGuideReq() : step.req || [];
+    const missing = req.filter((id) => {
       const el = $(id);
       if (!el) return false;
       if (el.placeholder === SECRET_PLACEHOLDER) return false;
@@ -752,6 +791,8 @@ function collectSettings() {
     if (el) values[name] = el.value.trim();
   }
   values.otobo_ssh_port = Number($("s-otobo_ssh_port").value || 22);
+  const provider = $("s-ipam_provider");
+  if (provider) values.ipam_provider = provider.value.trim() || "netbox";
   for (const name of BOOL_FIELDS) {
     values[name] = $(`s-${name}`).checked;
   }
@@ -993,6 +1034,10 @@ $("rotate-webhook").addEventListener("click", async () => {
 
 $("s-otobo_url").addEventListener("input", updateSshHostHint);
 $("s-otobo_ssh_host").addEventListener("input", updateSshHostHint);
+$("s-ipam_provider")?.addEventListener("change", () => {
+  syncIpamProviderFields();
+  if (guideActive()) renderGuide();
+});
 $("start-guide").addEventListener("click", () => openGuide());
 $("banner-guide").addEventListener("click", () => openGuide());
 $("setup-to-guide").addEventListener("click", () => openGuide());

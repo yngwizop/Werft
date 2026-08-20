@@ -142,7 +142,7 @@ Die VM-Felder gehören **nicht** auf die globale Maske „Neues Telefon-Ticket�
 | `VMOS` | Dropdown | `linux` / `windows` / `other` |
 | `VMTemplate` | Dropdown | Katalog-ID (`proxmox:template:…`, `proxmox:iso:…`, `vmware:iso:…`, `vmware:template:…`) |
 | `VMCpu` / `VMRamMB` / `VMDiskGB` | Text | Ressourcen |
-| `VMSubnet` | Text | NetBox-Prefix CIDR, z. B. `192.0.2.0/24` |
+| `VMSubnet` | Text | IPAM-Prefix CIDR (NetBox/Nautobot), z. B. `192.0.2.0/24` |
 | Node / Host | Dropdown | Proxmox-Nodes bzw. VMware-Hosts (ACL filtert nach Hypervisor) |
 | `VMDatastore` | Dropdown | Proxmox-Storage bzw. VMware-Datastore (ACL filtert nach Hypervisor) |
 | weitere | optional | Gateway, VLAN, … |

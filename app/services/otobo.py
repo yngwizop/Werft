@@ -107,7 +107,7 @@ class OTOBOClient:
             ticket_id=ticket_id,
             state=self.settings.otobo_status_provisioning,
             subject="Werft started",
-            body=f"Provisioning job {job_id} accepted. NetBox IP reservation and hypervisor clone in progress.",
+            body=f"Provisioning job {job_id} accepted. IPAM reservation and hypervisor clone in progress.",
         )
 
     def notify_success(
