@@ -1,6 +1,16 @@
+# Pull-only stack (pre-built images from GHCR).
+# Dev/build: use docker-compose.yml instead.
+#
+#   cp .env.example .env   # TLS_CN + OTOBO_SSH_KEY
+#   docker compose -f docker-compose.ghcr.yml pull
+#   docker compose -f docker-compose.ghcr.yml up -d
+#
+# Tag pin: WERFT_IMAGE_TAG=1.0.0  (default: latest)
+
 name: werft
 
 x-app-env: &app-env
+  image: ghcr.io/yngwizop/werft:${WERFT_IMAGE_TAG:-latest}
   environment:
     DATABASE_URL: postgresql+psycopg://middleware:middleware@postgres:5432/middleware
     REDIS_URL: redis://redis:6379/0
@@ -11,14 +21,10 @@ x-app-env: &app-env
   extra_hosts:
     - "host.docker.internal:host-gateway"
   restart: unless-stopped
-  volumes:
-    - werft_master:/var/lib/werft
-    - ./.env:/app/.env.import:ro
 
 services:
   api:
     <<: *app-env
-    build: .
     user: "0:0"
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     volumes:
@@ -45,7 +51,6 @@ services:
 
   worker:
     <<: *app-env
-    build: .
     user: "0:0"
     command:
       [
@@ -66,9 +71,7 @@ services:
         condition: service_healthy
 
   nginx:
-    build:
-      context: .
-      dockerfile: nginx/Dockerfile
+    image: ghcr.io/yngwizop/werft-nginx:${WERFT_IMAGE_TAG:-latest}
     environment:
       TLS_CN: ${TLS_CN:-werft}
     ports:
@@ -77,9 +80,6 @@ services:
       - "8000:80"
     volumes:
       - nginx_tls:/etc/nginx/tls
-      # Live-Edit in Dev (Image enthält Frontend/Config bereits; GHCR-Compose ohne Mounts)
-      - ./frontend:/usr/share/nginx/html:ro
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       api:
         condition: service_healthy
@@ -121,7 +121,6 @@ services:
 
   catalog-sync:
     <<: *app-env
-    build: .
     user: "0:0"
     command: ["python", "scripts/catalog_sync_loop.py"]
     volumes:
@@ -134,10 +133,5 @@ services:
 
 volumes:
   postgres_data:
-    external: true
-    name: middleware_postgres_data
   nginx_tls:
-    external: true
-    name: middleware_nginx_tls
   werft_master:
-    name: werft_master

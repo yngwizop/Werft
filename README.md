@@ -65,50 +65,61 @@ Werft installiert das nicht — muss auf der OTOBO-Box stehen, bevor das Setup-S
 
 Details: [docs/otobo-setup.md](docs/otobo-setup.md).
 
-## Schnellstart
+## Schnellstart (Images von GHCR)
 
-Voraussetzungen auf dem Werft-Host: **Docker Compose** und **Git**.
+Voraussetzung: **Docker Compose**. Images: `ghcr.io/yngwizop/werft` und `ghcr.io/yngwizop/werft-nginx` (bei Tag `v*` und auf `main`).
 
-1. **Repo holen**
-
-```bash
-git clone https://github.com/yngwizop/Werft.git
-cd Werft
-```
-
-2. **`.env` anlegen** (nur für Compose — alles andere später in der UI)
+Falls die Packages nach dem ersten Push noch privat sind: GitHub → Packages → Visibility **Public** (sonst `docker login ghcr.io`).
 
 ```bash
+mkdir werft && cd werft
+curl -fsSL -o docker-compose.yml \
+  https://raw.githubusercontent.com/yngwizop/Werft/main/docker-compose.ghcr.yml
+curl -fsSL -o .env.example \
+  https://raw.githubusercontent.com/yngwizop/Werft/main/.env.example
 cp .env.example .env
 ```
+
+In `.env` setzen:
 
 ```bash
 TLS_CN=<werft-hostname-oder-ip>
 OTOBO_SSH_KEY=/pfad/zum/privaten/key
+# optional: WERFT_IMAGE_TAG=1.0.0   # sonst latest
 ```
 
 | Variable | Bedeutung |
 |---|---|
 | `TLS_CN` | Common Name fürs selbstsignierte nginx-Zertifikat (Hostname oder IP von Werft) |
-| `OTOBO_SSH_KEY` | **Nur der Dateipfad** zum privaten SSH-Key **auf dem Werft-Host** (z. B. `/root/.ssh/id_ed25519`). Wird in den Container gemountet. |
+| `OTOBO_SSH_KEY` | **Pfad** zum privaten SSH-Key **auf dem Werft-Host** (wird in den Container gemountet) |
+| `WERFT_IMAGE_TAG` | Image-Tag (Default `latest`; Releases z. B. `1.0.0`) |
 
-SSH-User, OTOBO-Home und OS-User (Default oft `root` / `/opt/otobo` / `otobo`) setzt du in den **Einstellungen**, nicht in `.env`. Auf der OTOBO-VM muss der passende **öffentliche** Key in `authorized_keys` liegen, und der SSH-User sollte ohne Passwort `sudo -u <otobo-os-user>` können.
-
-3. **Starten**
+SSH-User / OTOBO-Home / OS-User kommen in die **Einstellungen**, nicht in `.env`. Öffentlicher Key auf der OTOBO-VM; SSH-User ohne Passwort `sudo -u <otobo-os-user>`.
 
 ```bash
+docker compose pull
+docker compose up -d
+```
+
+Weiter ab **Werft-UI** unten (Login → Einstellungen → OTOBO-Setup → prüfen).
+
+### Entwicklung (lokal bauen)
+
+```bash
+git clone https://github.com/yngwizop/Werft.git
+cd Werft
+cp .env.example .env   # TLS_CN + OTOBO_SSH_KEY
 docker compose up --build -d
 ```
 
-4. **Werft-UI öffnen** — `https://<werft-host>/`  
-   Erstes Login: `admin` / `changeme` → Passwort sofort ändern.
+`docker-compose.yml` baut die Images und mountet `frontend/` live. Produktion/Pull: `docker-compose.ghcr.yml` (oben als `docker-compose.yml` heruntergeladen).
 
-5. **Einstellungen** (Assistent starten über "Einrichtung starten" oder manuell): Webhook, OTOBO (URL/Login/SSH), IPAM (NetBox oder Nautobot), mindestens ein Hypervisor → **Speichern**.
+### Nach dem Start
 
-6. **OTOBO-Setup**-Tab: zuerst **Dry-Run**, dann ohne Häkchen ausführen.  
-   Legt Webservice, Prozess und Felder auf OTOBO an (idempotent). Webhook-Ziel ist automatisch `http://<werft-host>:8000`.
-
-7. **Prüfen:** Status-Tab (OTOBO, IPAM, Hypervisor, Daemon). Agenten: *Neues Prozessticket → VM Provisioning → Genehmigen*.
+1. **Werft-UI** — `https://<werft-host>/` — Login `admin` / `changeme`, Passwort ändern.
+2. **Einstellungen:** Webhook, OTOBO, IPAM (NetBox oder Nautobot), Hypervisor → Speichern.
+3. **OTOBO-Setup:** Dry-Run, dann ausführen (Webhook-Ziel `http://<werft-host>:8000`).
+4. **Status-Tab** prüfen. Agenten: *Neues Prozessticket → VM Provisioning → Genehmigen*.
 
 | | |
 |---|---|
@@ -116,7 +127,7 @@ docker compose up --build -d
 | Webhook | `POST /api/v1/provision-vm` (API-Key; optional IP-Allowlist) |
 | Health | `GET /healthz` |
 
-Details zu OTOBO-Voraussetzungen: unten und [docs/otobo-setup.md](docs/otobo-setup.md). Agenten-Ablauf: [docs/otobo-workflow.md](docs/otobo-workflow.md).
+Details: [docs/otobo-setup.md](docs/otobo-setup.md), Agenten: [docs/otobo-workflow.md](docs/otobo-workflow.md).
 
 ## OTOBO konfigurieren (Details)
 
