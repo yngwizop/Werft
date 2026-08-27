@@ -55,6 +55,6 @@ class OpsSetupRequest(BaseModel):
     confirm: Literal["setup"]
     dry_run: bool = True
     middleware_url: str = Field(min_length=8, max_length=256)
-    webservice_name: str = Field(default="VM-Provisioning", min_length=1, max_length=64)
+    webservice_name: str = Field(default="Werft-Sync-Api", min_length=1, max_length=64)
     skip_catalog_sync: bool = False
     skip_process: bool = False

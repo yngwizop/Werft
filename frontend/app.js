@@ -836,9 +836,10 @@ async function runSetup(event) {
     confirm: "setup",
     dry_run: $("dry-run").checked,
     middleware_url: defaultMiddlewareUrl(),
-    webservice_name: $("s-otobo_webservice_name").value.trim() || "REST-API",
+    webservice_name: $("s-otobo_webservice_name").value.trim() || "Werft-Sync-Api",
     skip_catalog_sync: $("skip-catalog").checked,
   };
+  let setupOk = false;
   try {
     const res = await fetch("/api/v1/ops/setup", {
       method: "POST",
@@ -872,13 +873,25 @@ async function runSetup(event) {
         if (!line) continue;
         try {
           const msg = JSON.parse(line);
-          if (msg.line !== undefined) log.textContent += msg.line + "\n";
-          else if (msg.exit_code !== undefined) log.textContent += `\nexit ${msg.exit_code}\n`;
+          if (msg.line !== undefined) {
+            log.textContent += msg.line + "\n";
+            const m = String(msg.line).match(/WEBSERVICE_NAME\s+(\S+)/);
+            if (m) $("s-otobo_webservice_name").value = m[1];
+          } else if (msg.exit_code !== undefined) {
+            log.textContent += `\nexit ${msg.exit_code}\n`;
+            setupOk = msg.exit_code === 0 && !$("dry-run").checked;
+          }
         } catch {
           log.textContent += line + "\n";
         }
         log.scrollTop = log.scrollHeight;
       }
+    }
+    if (setupOk) {
+      $("s-otobo_webservice_name").value =
+        $("s-otobo_webservice_name").value.trim() || body.webservice_name;
+      await loadSettings().catch(() => {});
+      await refreshStatus().catch(() => {});
     }
   } catch (err) {
     log.textContent += String(err);

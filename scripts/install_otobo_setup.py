@@ -156,19 +156,8 @@ sub ws_has_provision_invoker {
 }
 
 my $target = find_ws($wanted_name);
-if (!$target) {
-    my $list = $WS->WebserviceList(Valid => 0);
-    WS:
-    for my $id (keys %{$list || {}}) {
-        my $ws = $WS->WebserviceGet(ID => $id);
-        next WS unless $ws && $ws->{Config};
-        if (ws_has_provision_invoker($ws->{Config})) {
-            $target = $ws;
-            say_step("FOUND existing ProvisionVM invoker on webservice $ws->{Name}");
-            last WS;
-        }
-    }
-}
+# Only create/update the configured name (default Werft-Sync-Api). Do not adopt
+# another webservice that already has ProvisionVM — that left the vault name wrong.
 
 if (!$target) {
     say_step($dry ? "WOULD add webservice $wanted_name" : "CREATE webservice $wanted_name");
@@ -254,6 +243,7 @@ else {
     }
 }
 
+say_step("WEBSERVICE_NAME $wanted_name");
 say_step("BOOTSTRAP_OK");
 '''
 
@@ -499,7 +489,7 @@ def main() -> int:
     get_settings.cache_clear()
     s = get_settings()
 
-    default_ws = args.webservice_name or s.otobo_webservice_name or "VM-Provisioning"
+    default_ws = args.webservice_name or s.otobo_webservice_name or "Werft-Sync-Api"
     if args.middleware_url:
         default_mw = args.middleware_url.rstrip("/")
     else:
@@ -518,7 +508,7 @@ def main() -> int:
         args.middleware_url = default_mw
         args.webhook_api_key = default_key
     else:
-        print("OTOBO VM-Provisioning Setup (idempotent, merget bestehende Webservices)\n")
+        print("OTOBO VM-Provisioning Setup (idempotent; Webservice Werft-Sync-Api)\n")
         print("SSH:", f"{s.otobo_ssh_user}@{_otobo_ssh_host(s)}  home={s.otobo_home}")
         args.webservice_name = _ask("Webservice-Name", default_ws)
         args.middleware_url = _ask("Werft-URL (ohne Slash)", default_mw)

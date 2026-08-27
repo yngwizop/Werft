@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Werft</title>
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css?v=26" />
+    <link rel="stylesheet" href="/styles.css?v=27" />
   </head>
   <body>
     <div id="gate" class="gate">
@@ -151,10 +151,10 @@
               <label class="check"><input id="s-otobo_verify_ssl" type="checkbox" /> TLS prüfen</label>
               <details class="advanced">
                 <summary>Ticket-Status &amp; Webservice</summary>
-                <p class="hint">Nur ändern, wenn die Namen in OTOBO anders heißen. Webservice legt das Setup an.</p>
+                <p class="hint">Default <code>Werft-Sync-Api</code> — das Setup legt diesen Webservice an und speichert den Namen in den Einstellungen.</p>
                 <label>
                   Webservice
-                  <input id="s-otobo_webservice_name" type="text" placeholder="REST-API" />
+                  <input id="s-otobo_webservice_name" type="text" placeholder="Werft-Sync-Api" />
                 </label>
                 <label>Status Provisioning <input id="s-otobo_status_provisioning" type="text" /></label>
                 <label>Status Done <input id="s-otobo_status_done" type="text" /></label>
@@ -292,6 +292,6 @@
         </form>
       </div>
     </div>
-    <script src="/app.js?v=26"></script>
+    <script src="/app.js?v=27"></script>
   </body>
 </html>

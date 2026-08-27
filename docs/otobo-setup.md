@@ -44,14 +44,14 @@ Katalog-Dropdowns (Node, Vorlage, Datastore) füllt erst `catalog-sync` bzw. der
 | Middleware → OTOBO | **Provider** | Kommentar + Status nach Provisioning |
 | OTOBO → Middleware | **Requester** | Nach Freigabe Webhook an Middleware |
 
-Webservice-Name (Beispiel): `REST-API`  
+Webservice-Name (Default): `Werft-Sync-Api`  
 Middleware-URL für den Requester: `http://192.0.2.30:8000` (weiterhin gültig, nginx mappt 8000→Webhook) oder `https://192.0.2.30` (selbstsigniert — SSL-Prüfung am Invoker ggf. aus). Route bleibt `/api/v1/provision-vm`. **Kein** Basic Auth auf diesem Pfad, nur `X-Api-Key`.
 
 ---
 
 ## 1. Provider (Rückweg)
 
-1. Admin → Web Services → Webservice anlegen (`REST-API`, gültig, Debug optional).
+1. Admin → Web Services → Webservice anlegen (`Werft-Sync-Api`, gültig, Debug optional).
 2. **OTOBO als Provider** → Transport `HTTP::REST` → Konfigurieren:
    - Maximale Nachrichtenlänge: `10000000`
    - Keep-Alive: Nein
@@ -72,15 +72,15 @@ Middleware-URL für den Requester: `http://192.0.2.30:8000` (weiterhin gültig, 
 Endpoints:
 
 ```text
-POST {OTOBO}/otobo/nph-genericinterface.pl/Webservice/REST-API/SessionCreate
-POST {OTOBO}/otobo/nph-genericinterface.pl/Webservice/REST-API/TicketUpdate
+POST {OTOBO}/otobo/nph-genericinterface.pl/Webservice/Werft-Sync-Api/SessionCreate
+POST {OTOBO}/otobo/nph-genericinterface.pl/Webservice/Werft-Sync-Api/TicketUpdate
 ```
 
 Middleware-Env:
 
 ```env
 OTOBO_URL=http://192.0.2.20
-OTOBO_WEBSERVICE_NAME=REST-API
+OTOBO_WEBSERVICE_NAME=Werft-Sync-Api
 OTOBO_USER_LOGIN=...
 OTOBO_PASSWORD=...
 ```
@@ -204,7 +204,7 @@ Provider:
 
 ```bash
 curl -sS -X POST \
-  "$OTOBO_URL/otobo/nph-genericinterface.pl/Webservice/REST-API/SessionCreate" \
+  "$OTOBO_URL/otobo/nph-genericinterface.pl/Webservice/Werft-Sync-Api/SessionCreate" \
   -H 'Content-Type: application/json' \
   -d '{"UserLogin":"...","Password":"..."}'
 ```

@@ -56,7 +56,7 @@ class Settings(InfraSettings):
     vmware_endpoints: str = ""
 
     otobo_url: str = ""
-    otobo_webservice_name: str = "Provisioning"
+    otobo_webservice_name: str = "Werft-Sync-Api"
     otobo_user_login: str = ""
     otobo_password: str = ""
     otobo_verify_ssl: bool = True
