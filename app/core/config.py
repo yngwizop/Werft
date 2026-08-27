@@ -61,7 +61,7 @@ class Settings(InfraSettings):
     otobo_password: str = ""
     otobo_verify_ssl: bool = True
     otobo_status_provisioning: str = "Provisioning"
-    otobo_status_done: str = "Done"
+    otobo_status_done: str = "closed successful"
     otobo_status_failed: str = "Failed"
 
     otobo_ssh_host: str = ""

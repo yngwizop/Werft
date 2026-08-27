@@ -96,6 +96,12 @@ class OTOBOClient:
                 resp = client.post(url, json=payload)
             if resp.status_code >= 400:
                 raise OTOBOError(f"OTOBO TicketUpdate failed: {resp.status_code} {resp.text}")
+            try:
+                data = resp.json()
+            except Exception:  # noqa: BLE001
+                data = None
+            if isinstance(data, dict) and data.get("Error"):
+                raise OTOBOError(f"OTOBO TicketUpdate error: {data['Error']}")
             logger.info("OTOBO ticket %s updated -> state=%s", ticket_id, state)
         except OTOBOError:
             raise
