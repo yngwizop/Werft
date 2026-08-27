@@ -9,7 +9,7 @@ class LoginRequest(BaseModel):
 
 
 class PasswordChangeRequest(BaseModel):
-    current_password: str = Field(min_length=1, max_length=256)
+    current_password: str = Field(default="", max_length=256)
     new_password: str = Field(min_length=1, max_length=256)
 
 

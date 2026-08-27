@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Werft</title>
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css?v=25" />
+    <link rel="stylesheet" href="/styles.css?v=26" />
   </head>
   <body>
     <div id="gate" class="gate">
@@ -28,11 +28,7 @@
     <div id="pw-gate" class="gate is-hidden">
       <form id="pw-form" class="gate-card">
         <h1>Passwort ändern</h1>
-        <p class="muted">Das Startpasswort muss ersetzt werden (mindestens 10 Zeichen).</p>
-        <label>
-          Aktuelles Passwort
-          <input id="pw-current" type="password" autocomplete="current-password" required />
-        </label>
+        <p class="muted">Bitte ein neues Passwort setzen (mindestens 10 Zeichen). Das Startpasswort <code>changeme</code> ist danach ungültig.</p>
         <label>
           Neues Passwort
           <input id="pw-new" type="password" autocomplete="new-password" required minlength="10" />
@@ -296,6 +292,6 @@
         </form>
       </div>
     </div>
-    <script src="/app.js?v=25"></script>
+    <script src="/app.js?v=26"></script>
   </body>
 </html>

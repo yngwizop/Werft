@@ -66,8 +66,13 @@ def change_password(
     db: Session = Depends(get_db),
     user: OpsUser = Depends(require_user),
 ) -> JSONResponse:
-    if not verify_password(body.current_password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    # Forced first-login change: session already proved the start password.
+    if not user.must_change_password:
+        if not verify_password(body.current_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Aktuelles Passwort ist falsch",
+            )
     error = password_acceptable(body.new_password)
     if error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=error)

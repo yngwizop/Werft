@@ -959,7 +959,6 @@ $("pw-form").addEventListener("submit", async (event) => {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        current_password: $("pw-current").value,
         new_password: $("pw-new").value,
       }),
     });
@@ -968,7 +967,6 @@ $("pw-form").addEventListener("submit", async (event) => {
       setError("pw-error", error_text(data, "Speichern fehlgeschlagen"));
       return;
     }
-    $("pw-current").value = "";
     $("pw-new").value = "";
     enterApp();
   } catch (err) {
